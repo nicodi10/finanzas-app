@@ -25,6 +25,20 @@ let state = {
 
 const COLOR_PALETTE = ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#4ade80', '#f87171', '#94a3b8', '#1e293b'];
 
+const BANK_IDENTITIES = {
+    'santander': '#ec0000',
+    'galicia': '#ff8200',
+    'bbva': '#004481',
+    'macro': '#0050ff',
+    'brubank': '#5e17eb',
+    'icbc': '#c70007',
+    'hsbc': '#db0011',
+    'patagonia': '#00529b',
+    'naranja x': '#ff4d00',
+    'mercado pago': '#009ee3',
+    'bna (banco nación)': '#0072bc'
+};
+
 // Security: Sanitize user input to prevent XSS
 function sanitize(str) {
     if (!str) return "";
@@ -50,6 +64,17 @@ function init() {
     } else {
         document.getElementById('view-login').style.display = 'flex';
         document.getElementById('main-app-container').classList.add('hidden');
+    }
+
+    // Listener para autocompletar color de banco
+    const bankInput = document.getElementById('card-bank');
+    if (bankInput) {
+        bankInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            if (BANK_IDENTITIES[val]) {
+                selectColor(BANK_IDENTITIES[val]);
+            }
+        });
     }
 }
 
