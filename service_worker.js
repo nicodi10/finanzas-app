@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mis-consumos-v9';
+const CACHE_NAME = 'mis-consumos-v10';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -41,9 +41,15 @@ self.addEventListener('fetch', (event) => {
     if (event.request.url.includes('accounts.google.com') ||
         event.request.url.includes('googleapis.com')) return;
 
+    // Network-First strategy
     event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request);
+        fetch(event.request).then((response) => {
+            return caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, response.clone());
+                return response;
+            });
+        }).catch(() => {
+            return caches.match(event.request);
         })
     );
 });

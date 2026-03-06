@@ -13,6 +13,16 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+// Enable offline persistence
+db.enablePersistence()
+    .catch((err) => {
+        if (err.code == 'failed-precondition') {
+            console.warn("Múltiples pestañas abiertas, persistencia solo funciona en una.");
+        } else if (err.code == 'unimplemented') {
+            console.warn("El navegador no soporta persistencia offline.");
+        }
+    });
+
 // --- State Management ---
 let state = {
     currentView: 'dashboard',
@@ -259,6 +269,16 @@ auth.onAuthStateChanged(user => {
         startCloudSyncListener();
     } else {
         stopCloudSyncListener();
+        const userSession = localStorage.getItem('ff_user_session');
+        if (userSession) {
+            try {
+                const session = JSON.parse(userSession);
+                if (session.id !== 'guest') {
+                    console.warn("La sesión de Firebase expiró o el equipo está offline.");
+                    updateSyncStatus('error');
+                }
+            } catch (e) { }
+        }
     }
 });
 
