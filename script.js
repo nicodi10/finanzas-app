@@ -54,7 +54,14 @@ function init() {
 }
 
 function handleCredentialResponse(response) {
-    const responsePayload = JSON.parse(atob(response.credential.split('.')[1]));
+    // Decodificación segura de JWT para manejar caracteres UTF-8 (como tildes)
+    const base64Url = response.credential.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+
+    const responsePayload = JSON.parse(jsonPayload);
     const userData = {
         id: responsePayload.sub,
         name: responsePayload.name,
