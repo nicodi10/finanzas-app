@@ -671,6 +671,15 @@ function viewCardDetails(cardId) {
 
     document.getElementById('detail-card-name').innerText = sanitize(card.bank);
     const hero = document.getElementById('card-hero-container');
+    const hasMultipleCards = state.cards.length > 1;
+    const swipeHintHtml = hasMultipleCards ? `
+        <div class="swipe-hint">
+            <i class="fa-solid fa-chevron-left"></i>
+            <span>Desliza</span>
+            <i class="fa-solid fa-chevron-right"></i>
+        </div>
+    ` : '';
+
     hero.innerHTML = `
         <div class="card-preview" id="card-swipe-target" style="background: linear-gradient(135deg, ${card.color}EE, #1e293b);">
             <div class="card-logo-overlay" onclick="editCard('${card.id}')" style="cursor:pointer">${getCardLogo(card.type)}</div>
@@ -683,16 +692,31 @@ function viewCardDetails(cardId) {
                 </div>
                 <span>NICO DIAZ</span>
             </div>
-            <div class="swipe-hint">
-                <i class="fa-solid fa-chevron-left"></i>
-                <span>Desliza</span>
-                <i class="fa-solid fa-chevron-right"></i>
-            </div>
+            ${swipeHintHtml}
         </div>
     `;
     renderPurchases();
-    initSwipeNavigation();
+    renderCardIndicators();
+
+    if (hasMultipleCards) {
+        initSwipeNavigation();
+    }
+
     showView('card-details');
+}
+
+function renderCardIndicators() {
+    const container = document.getElementById('card-indicators');
+    if (!container) return;
+
+    if (state.cards.length <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = state.cards.map(c => `
+        <div class="indicator-dot ${c.id === state.selectedCardId ? 'active' : ''}"></div>
+    `).join('');
 }
 
 let touchStartX = 0;

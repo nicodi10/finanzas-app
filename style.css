@@ -409,6 +409,29 @@ select:focus {
     }
 }
 
+/* Card Pagination Indicators */
+.card-indicators-container {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    margin-top: -10px;
+}
+
+.indicator-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.indicator-dot.active {
+    background: var(--primary);
+    transform: scale(1.2);
+    box-shadow: 0 0 8px var(--primary);
+}
+
 /* Color Picker UX */
 .color-picker-grid {
     display: flex;
