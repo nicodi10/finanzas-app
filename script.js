@@ -12,9 +12,10 @@ const COLOR_PALETTE = ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#4ade80', '#
 
 // Security: Sanitize user input to prevent XSS
 function sanitize(str) {
+    if (!str) return "";
     const temp = document.createElement('div');
     temp.textContent = str;
-    return temp.innerHTML;
+    return temp.innerHTML.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 function init() {
