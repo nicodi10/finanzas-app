@@ -509,40 +509,70 @@ input:focus {
     justify-content: center;
 }
 
-.day-picker-container {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 5px;
+/* Carousel Picker */
+.carousel-picker {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     background: rgba(255, 255, 255, 0.05);
     padding: 10px;
     border-radius: 12px;
     border: 1px solid var(--glass-border);
+    gap: 15px;
 }
 
-.day-btn {
-    background: transparent;
-    border: 1px solid var(--glass-border);
-    color: var(--text-secondary);
-    padding: 5px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s;
+.carousel-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary);
+    width: 40px;
     text-align: center;
-    aspect-ratio: 1;
+}
+
+.btn-carousel {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-carousel:hover {
+    background: var(--primary);
+}
+
+/* Bank Color Sphere */
+.color-option.bank-identity {
+    position: relative;
+    border: 2px dashed rgba(255, 255, 255, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.day-btn:hover {
-    border-color: var(--primary);
-    background: rgba(56, 189, 248, 0.1);
+.color-option.bank-identity i {
+    font-size: 0.9rem;
+    /* Slightly larger */
+    opacity: 0.9;
+    /* Ensure icon is perfectly centered */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.day-btn.active {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-    font-weight: 700;
+.color-option.bank-identity::before {
+    content: "Banco";
+    position: absolute;
+    bottom: -18px;
+    font-size: 0.6rem;
+    white-space: nowrap;
+    opacity: 0.7;
+    left: 50%;
+    transform: translateX(-50%);
 }
