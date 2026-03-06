@@ -1,3 +1,18 @@
+// --- Firebase Configuration ---
+const firebaseConfig = {
+    apiKey: "AIzaSyCZIVq0dkwHKX9v00fusxCvkyZQFfXjHbw",
+    authDomain: "finanzas-app-14a70.firebaseapp.com",
+    projectId: "finanzas-app-14a70",
+    storageBucket: "finanzas-app-14a70.firebasestorage.app",
+    messagingSenderId: "137607555145",
+    appId: "1:137607555145:web:74554f6a2fd0c5defcb798"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
 // --- State Management ---
 let state = {
     currentView: 'dashboard',
@@ -23,7 +38,15 @@ function init() {
     if (userSession) {
         document.getElementById('view-login').style.display = 'none';
         document.getElementById('main-app-container').classList.remove('hidden');
+
+        // Se carga primero lo local para rapidez, luego se sincroniza con la nube
         loadData();
+
+        // Intentar sesión en Firebase si hay sesión guardada
+        const session = JSON.parse(userSession);
+        if (session.id !== 'guest') {
+            console.log("Iniciando sincronización con la nube...");
+        }
     } else {
         document.getElementById('view-login').style.display = 'flex';
         document.getElementById('main-app-container').classList.add('hidden');
@@ -32,11 +55,23 @@ function init() {
 
 function handleCredentialResponse(response) {
     const responsePayload = JSON.parse(atob(response.credential.split('.')[1]));
-    localStorage.setItem('ff_user_session', JSON.stringify({
+    const userData = {
         id: responsePayload.sub,
         name: responsePayload.name,
         email: responsePayload.email
-    }));
+    };
+
+    localStorage.setItem('ff_user_session', JSON.stringify(userData));
+
+    // Auth con Firebase usando el token de Google
+    const credential = firebase.auth.GoogleAuthProvider.credential(response.credential);
+    auth.signInWithCredential(credential).then(() => {
+        console.log("Conectado a la nube exitosamente");
+        syncFromCloud();
+    }).catch(err => {
+        console.error("Error al conectar con la nube:", err);
+    });
+
     document.getElementById('view-login').style.display = 'none';
     document.getElementById('main-app-container').classList.remove('hidden');
     loadData();
@@ -84,13 +119,93 @@ function wipeData() {
     }
 }
 
+function updateSyncStatus(status) {
+    const icon = document.getElementById('sync-icon');
+    const text = document.getElementById('sync-text');
+    if (!icon || !text) return;
+
+    if (status === 'syncing') {
+        icon.className = 'fa-solid fa-arrows-rotate fa-spin';
+        text.innerText = 'Sincronizando...';
+        icon.style.color = 'var(--primary)';
+    } else if (status === 'synced') {
+        icon.className = 'fa-solid fa-cloud-check';
+        text.innerText = 'Nube actualizada';
+        icon.style.color = 'var(--success)';
+    } else if (status === 'local') {
+        icon.className = 'fa-solid fa-cloud-slash';
+        text.innerText = 'Modo Local';
+        icon.style.color = 'var(--text-secondary)';
+    } else if (status === 'error') {
+        icon.className = 'fa-solid fa-cloud-exclamation';
+        text.innerText = 'Error de conexión';
+        icon.style.color = 'var(--danger)';
+    }
+}
+
+// Modificar saveData para usar el status
 function saveData() {
-    localStorage.setItem('finanzas_data_v3', JSON.stringify({
+    const data = {
         expenses: state.expenses,
         cards: state.cards,
         purchases: state.purchases
-    }));
+    };
+    localStorage.setItem('finanzas_data_v3', JSON.stringify(data));
+
+    // Sincronizar con Firebase si el usuario está logueado
+    if (auth.currentUser) {
+        updateSyncStatus('syncing');
+        db.collection('users').doc(auth.currentUser.uid).set(data)
+            .then(() => {
+                console.log("Nube actualizada ✅");
+                updateSyncStatus('synced');
+            })
+            .catch(err => {
+                console.error("Error al guardar en la nube:", err);
+                updateSyncStatus('error');
+            });
+    } else {
+        updateSyncStatus('local');
+    }
 }
+
+async function syncFromCloud() {
+    if (!auth.currentUser) {
+        updateSyncStatus('local');
+        return;
+    }
+
+    try {
+        updateSyncStatus('syncing');
+        const doc = await db.collection('users').doc(auth.currentUser.uid).get();
+        if (doc.exists) {
+            const cloudData = doc.data();
+            // Mezclar datos o priorizar nube
+            state.expenses = cloudData.expenses || [];
+            state.cards = cloudData.cards || [];
+            state.purchases = cloudData.purchases || [];
+            localStorage.setItem('finanzas_data_v3', JSON.stringify(cloudData));
+            renderDashboard();
+            console.log("Datos sincronizados desde la nube ☁️");
+            updateSyncStatus('synced');
+        } else {
+            // If no cloud data, save current local data to cloud
+            saveData();
+        }
+    } catch (err) {
+        console.error("Error al sincronizar desde la nube:", err);
+        updateSyncStatus('error');
+    }
+}
+
+// Escuchar cambios en auth de Firebase
+auth.onAuthStateChanged(user => {
+    if (user) {
+        syncFromCloud();
+    } else {
+        updateSyncStatus('local');
+    }
+});
 
 function exportData() {
     const data = localStorage.getItem('finanzas_data_v3');
