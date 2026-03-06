@@ -429,8 +429,30 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./service_worker.js')
-                    .then(reg => console.log('Service Worker Registrado!', reg))
+                    .then(reg => {
+                        console.log('Service Worker Registrado!', reg);
+
+                        // Detectar si hay una actualización esperando
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // Nueva versión lista, el usuario verá el cambio al recargar automáticamente
+                                    console.log('Nueva versión detectada. Recargando...');
+                                }
+                            });
+                        });
+                    })
                     .catch(err => console.error('Error al registrar Service Worker', err));
+            });
+
+            // Recargar automáticamente cuando el nuevo Service Worker tome el control
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    window.location.reload();
+                    refreshing = true;
+                }
             });
         }
     </script>
