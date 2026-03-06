@@ -379,34 +379,58 @@ select:focus {
     margin-top: 15px;
 }
 
-.swipe-hint {
-    position: absolute;
-    bottom: 45px;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-    font-size: 0.7rem;
-    color: white;
-    opacity: 0.3;
-    pointer-events: none;
-    animation: pulseHint 2s infinite;
+@keyframes slideOutLeft {
+    to {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
 }
 
-@keyframes pulseHint {
-
-    0%,
-    100% {
-        opacity: 0.2;
-        transform: translateY(0);
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
     }
 
-    50% {
-        opacity: 0.5;
-        transform: translateY(-2px);
+    to {
+        transform: translateX(0);
+        opacity: 1;
     }
+}
+
+@keyframes slideOutRight {
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.card-preview.animate-out-left {
+    animation: slideOutLeft 0.3s forwards ease-in;
+}
+
+.card-preview.animate-in-right {
+    animation: slideInRight 0.3s forwards ease-out;
+}
+
+.card-preview.animate-out-right {
+    animation: slideOutRight 0.3s forwards ease-in;
+}
+
+.card-preview.animate-in-left {
+    animation: slideInLeft 0.3s forwards ease-out;
 }
 
 /* Card Pagination Indicators */

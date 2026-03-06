@@ -659,7 +659,7 @@ function renderDashboard() {
     }
 }
 
-function viewCardDetails(cardId) {
+function viewCardDetails(cardId, animationClass) {
     state.selectedCardId = cardId;
     const card = state.cards.find(c => c.id === cardId);
     if (!card) return;
@@ -672,16 +672,9 @@ function viewCardDetails(cardId) {
     document.getElementById('detail-card-name').innerText = sanitize(card.bank);
     const hero = document.getElementById('card-hero-container');
     const hasMultipleCards = state.cards.length > 1;
-    const swipeHintHtml = hasMultipleCards ? `
-        <div class="swipe-hint">
-            <i class="fa-solid fa-chevron-left"></i>
-            <span>Desliza</span>
-            <i class="fa-solid fa-chevron-right"></i>
-        </div>
-    ` : '';
 
     hero.innerHTML = `
-        <div class="card-preview" id="card-swipe-target" style="background: linear-gradient(135deg, ${card.color}EE, #1e293b);">
+        <div class="card-preview ${animationClass || ''}" id="card-swipe-target" style="background: linear-gradient(135deg, ${card.color}EE, #1e293b);">
             <div class="card-logo-overlay" onclick="editCard('${card.id}')" style="cursor:pointer">${getCardLogo(card.type)}</div>
             <div class="card-bank">${sanitize(card.bank)}</div>
             <div class="card-chip"></div>
@@ -692,7 +685,6 @@ function viewCardDetails(cardId) {
                 </div>
                 <span>NICO DIAZ</span>
             </div>
-            ${swipeHintHtml}
         </div>
     `;
     renderPurchases();
@@ -738,16 +730,23 @@ function handleSwipe(start, end) {
     const threshold = 50;
     const diff = start - end;
     const currentIndex = state.cards.findIndex(c => c.id === state.selectedCardId);
+    const target = document.getElementById('card-swipe-target');
 
-    if (Math.abs(diff) > threshold) {
+    if (Math.abs(diff) > threshold && target) {
         if (diff > 0) {
             // Swipe Left -> Next Card
             const nextIdx = (currentIndex + 1) % state.cards.length;
-            viewCardDetails(state.cards[nextIdx].id);
+            target.classList.add('animate-out-left');
+            setTimeout(() => {
+                viewCardDetails(state.cards[nextIdx].id, 'animate-in-right');
+            }, 300);
         } else {
             // Swipe Right -> Prev Card
             const prevIdx = (currentIndex - 1 + state.cards.length) % state.cards.length;
-            viewCardDetails(state.cards[prevIdx].id);
+            target.classList.add('animate-out-right');
+            setTimeout(() => {
+                viewCardDetails(state.cards[prevIdx].id, 'animate-in-left');
+            }, 300);
         }
         if (navigator.vibrate) navigator.vibrate(20);
     }
