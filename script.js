@@ -20,7 +20,8 @@ let state = {
     expenses: [], // {id, type: 'fixed'|'variable', name, amount, month: 'YYYY-MM', endMonth: 'YYYY-MM'|null}
     cards: [],    // {id, bank, type, last4, color, billingCycles: { 'YYYY-MM': {closingDay, dueDay} }}
     purchases: [], // {id, cardId, name, amount, isRecurring, installments, startMonth}
-    selectedCardId: null
+    selectedCardId: null,
+    unsubscribeSync: null
 };
 
 const COLOR_PALETTE = ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#4ade80', '#f87171', '#94a3b8', '#1e293b'];
@@ -102,7 +103,7 @@ function handleCredentialResponse(response) {
     const credential = firebase.auth.GoogleAuthProvider.credential(response.credential);
     auth.signInWithCredential(credential).then(() => {
         console.log("Conectado a la nube exitosamente");
-        syncFromCloud();
+        startCloudSyncListener();
     }).catch(err => {
         console.error("Error al conectar con la nube:", err);
     });
@@ -204,41 +205,60 @@ function saveData() {
     }
 }
 
-async function syncFromCloud() {
-    if (!auth.currentUser) {
-        updateSyncStatus('local');
-        return;
-    }
+function startCloudSyncListener() {
+    if (!auth.currentUser) return;
 
-    try {
-        updateSyncStatus('syncing');
-        const doc = await db.collection('users').doc(auth.currentUser.uid).get();
-        if (doc.exists) {
-            const cloudData = doc.data();
-            // Mezclar datos o priorizar nube
-            state.expenses = cloudData.expenses || [];
-            state.cards = cloudData.cards || [];
-            state.purchases = cloudData.purchases || [];
-            localStorage.setItem('finanzas_data_v3', JSON.stringify(cloudData));
-            renderDashboard();
-            console.log("Datos sincronizados desde la nube ☁️");
-            updateSyncStatus('synced');
-        } else {
-            // If no cloud data, save current local data to cloud
-            saveData();
-        }
-    } catch (err) {
-        console.error("Error al sincronizar desde la nube:", err);
-        updateSyncStatus('error');
+    // Si ya hay un listener activo, no crear otro
+    if (state.unsubscribeSync) return;
+
+    updateSyncStatus('syncing');
+
+    state.unsubscribeSync = db.collection('users').doc(auth.currentUser.uid)
+        .onSnapshot((doc) => {
+            if (doc.exists) {
+                const cloudData = doc.data();
+
+                // Solo actualizamos si los datos son diferentes para evitar re-renderizados infinitos
+                console.log("Datos recibidos de la nube ☁️");
+
+                // Actualizamos estado local
+                state.expenses = cloudData.expenses || [];
+                state.cards = cloudData.cards || [];
+                state.purchases = cloudData.purchases || [];
+
+                // Guardamos en localStorage para persistencia offline
+                localStorage.setItem('finanzas_data_v3', JSON.stringify({
+                    expenses: state.expenses,
+                    cards: state.cards,
+                    purchases: state.purchases
+                }));
+
+                renderDashboard();
+                updateSyncStatus('synced');
+            } else {
+                // Si el doc no existe, subimos lo local por primera vez
+                saveData();
+            }
+        }, (err) => {
+            console.error("Error en el listener de la nube:", err);
+            updateSyncStatus('error');
+        });
+}
+
+function stopCloudSyncListener() {
+    if (state.unsubscribeSync) {
+        state.unsubscribeSync();
+        state.unsubscribeSync = null;
+        updateSyncStatus('local');
     }
 }
 
 // Escuchar cambios en auth de Firebase
 auth.onAuthStateChanged(user => {
     if (user) {
-        syncFromCloud();
+        startCloudSyncListener();
     } else {
-        updateSyncStatus('local');
+        stopCloudSyncListener();
     }
 });
 
