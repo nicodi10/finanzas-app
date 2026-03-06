@@ -36,7 +36,8 @@ const BANK_IDENTITIES = {
     'patagonia': '#00529b',
     'naranja x': '#ff4d00',
     'mercado pago': '#009ee3',
-    'bna (banco nación)': '#0072bc'
+    'bna (banco nación)': '#0072bc',
+    'hipotecario': '#00355f'
 };
 
 // Security: Sanitize user input to prevent XSS
@@ -66,14 +67,16 @@ function init() {
         document.getElementById('main-app-container').classList.add('hidden');
     }
 
-    // Listener para autocompletar color de banco
+    // Listener para autocompletar color de banco y actualizar la esfera dinámica
     const bankInput = document.getElementById('card-bank');
     if (bankInput) {
         bankInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             if (BANK_IDENTITIES[val]) {
-                selectColor(BANK_IDENTITIES[val]);
+                state.selectedColor = BANK_IDENTITIES[val];
+                document.getElementById('card-color').value = state.selectedColor;
             }
+            renderColorPicker(); // Refresca para mostrar el color del banco en la esfera
         });
     }
 }
@@ -342,9 +345,26 @@ function closeModal() {
 function renderColorPicker() {
     const container = document.getElementById('color-picker-ui');
     if (!container) return;
-    container.innerHTML = COLOR_PALETTE.map(color => `
-        <div class="color-option" style="background: ${color}" onclick="selectColor('${color}')" data-color="${color}"></div>
+
+    const bankInput = document.getElementById('card-bank');
+    const bankName = bankInput ? bankInput.value.toLowerCase() : '';
+    const bankColor = BANK_IDENTITIES[bankName] || '#38bdf8';
+
+    const currentColor = document.getElementById('card-color').value;
+
+    let html = `
+        <div class="color-option bank-identity ${currentColor === bankColor ? 'active' : ''}" 
+             style="background: ${bankColor}" onclick="selectColor('${bankColor}')" data-color="${bankColor}">
+             <i class="fa-solid fa-building-columns"></i>
+        </div>
+    `;
+
+    html += COLOR_PALETTE.map(color => `
+        <div class="color-option ${currentColor === color ? 'active' : ''}" 
+             style="background: ${color}" onclick="selectColor('${color}')" data-color="${color}"></div>
     `).join('');
+
+    container.innerHTML = html;
 }
 
 function selectColor(color) {
@@ -428,23 +448,32 @@ function selectPickerMonth(pickerId, month) {
     renderPicker(pickerId);
 }
 
-function renderDayPicker(containerId, inputId, selectedDay) {
+function renderCarouselDayPicker(containerId, inputId, selectedDay) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    let html = '';
-    for (let day = 1; day <= 31; day++) {
-        const isActive = parseInt(selectedDay) === day;
-        html += `<button type="button" class="day-btn ${isActive ? 'active' : ''}" 
-                 onclick="selectPickerDay('${inputId}', ${day}, '${containerId}')">${day}</button>`;
-    }
-    container.innerHTML = html;
+    let day = parseInt(selectedDay) || 1;
+
+    container.innerHTML = `
+        <button type="button" class="btn-carousel" onclick="adjustCarouselDay('${containerId}', '${inputId}', -1)">
+            <i class="fa-solid fa-minus"></i>
+        </button>
+        <div class="carousel-value">${day}</div>
+        <button type="button" class="btn-carousel" onclick="adjustCarouselDay('${containerId}', '${inputId}', 1)">
+            <i class="fa-solid fa-plus"></i>
+        </button>
+    `;
+
+    document.getElementById(inputId).value = day;
 }
 
-function selectPickerDay(inputId, day, containerId) {
+function adjustCarouselDay(containerId, inputId, delta) {
     const input = document.getElementById(inputId);
-    input.value = day;
-    renderDayPicker(containerId, inputId, day);
+    let day = parseInt(input.value) + delta;
+    if (day < 1) day = 31;
+    if (day > 31) day = 1;
+
+    renderCarouselDayPicker(containerId, inputId, day);
 }
 
 // --- Core Logic ---
@@ -638,9 +667,9 @@ function openBillingModal(card) {
     document.getElementById('billing-closing-day').value = billing.closingDay || '';
     document.getElementById('billing-due-day').value = billing.dueDay || '';
 
-    // Initialize Day Pickers
-    renderDayPicker('picker-billing-closing', 'billing-closing-day', billing.closingDay);
-    renderDayPicker('picker-billing-due', 'billing-due-day', billing.dueDay);
+    // Initialize Carousel Pickers
+    renderCarouselDayPicker('picker-billing-closing', 'billing-closing-day', billing.closingDay || 1);
+    renderCarouselDayPicker('picker-billing-due', 'billing-due-day', billing.dueDay || 1);
 
     const form = document.getElementById('form-billing');
     form.onsubmit = function (e) {

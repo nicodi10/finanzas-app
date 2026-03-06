@@ -309,12 +309,12 @@
             <form id="form-billing">
                 <div class="form-group">
                     <label>Fecha de Cierre (Día)</label>
-                    <div id="picker-billing-closing" class="day-picker-container"></div>
+                    <div id="picker-billing-closing" class="carousel-picker"></div>
                     <input type="hidden" id="billing-closing-day">
                 </div>
                 <div class="form-group">
                     <label>Fecha de Vencimiento (Día)</label>
-                    <div id="picker-billing-due" class="day-picker-container"></div>
+                    <div id="picker-billing-due" class="carousel-picker"></div>
                     <input type="hidden" id="billing-due-day">
                 </div>
                 <button type="submit" class="btn-primary">Actualizar Fechas</button>
@@ -334,19 +334,17 @@
                 <div class="form-group">
                     <label>Banco</label>
                     <input type="text" id="card-bank" list="bank-list" placeholder="Selecciona o escribe..." required>
-                    <datalist id="bank-list">
-                        <option value="Santander">
-                        <option value="Galicia">
-                        <option value="BBVA">
-                        <option value="Macro">
-                        <option value="Brubank">
-                        <option value="ICBC">
-                        <option value="HSBC">
-                        <option value="Patagonia">
-                        <option value="Naranja X">
-                        <option value="Mercado Pago">
-                        <option value="BNA (Banco Nación)">
-                    </datalist>
+                    <option value="BNA (Banco Nación)">
+                    <option value="Galicia">
+                    <option value="Santander">
+                    <option value="Macro">
+                    <option value="BBVA">
+                    <option value="Hipotecario">
+                    <option value="Patagonia">
+                    <option value="Brubank">
+                    <option value="Mercado Pago">
+                    <option value="Naranja X">
+                        </datalist>
                 </div>
                 <div class="form-group">
                     <label>Red</label>
