@@ -70,13 +70,13 @@ function init() {
     // Listener para autocompletar color de banco y actualizar la esfera dinámica
     const bankInput = document.getElementById('card-bank');
     if (bankInput) {
-        bankInput.addEventListener('input', (e) => {
+        bankInput.addEventListener('change', (e) => {
             const val = e.target.value.toLowerCase();
             if (BANK_IDENTITIES[val]) {
                 state.selectedColor = BANK_IDENTITIES[val];
                 document.getElementById('card-color').value = state.selectedColor;
             }
-            renderColorPicker(); // Refresca para mostrar el color del banco en la esfera
+            renderColorPicker();
         });
     }
 }
@@ -452,28 +452,55 @@ function renderCarouselDayPicker(containerId, inputId, selectedDay) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    let day = parseInt(selectedDay) || 1;
+    let html = '';
+    for (let i = 1; i <= 31; i++) {
+        html += `<div class="carousel-item" data-day="${i}">${i}</div>`;
+    }
+    container.innerHTML = html;
 
-    container.innerHTML = `
-        <button type="button" class="btn-carousel" onclick="adjustCarouselDay('${containerId}', '${inputId}', -1)">
-            <i class="fa-solid fa-minus"></i>
-        </button>
-        <div class="carousel-value">${day}</div>
-        <button type="button" class="btn-carousel" onclick="adjustCarouselDay('${containerId}', '${inputId}', 1)">
-            <i class="fa-solid fa-plus"></i>
-        </button>
-    `;
+    const input = document.getElementById(inputId);
+    const dayToSelect = parseInt(selectedDay) || 1;
+    input.value = dayToSelect;
 
-    document.getElementById(inputId).value = day;
+    // Scroll to initial position
+    setTimeout(() => {
+        const item = container.querySelector(`[data-day="${dayToSelect}"]`);
+        if (item) {
+            container.scrollLeft = item.offsetLeft - (container.offsetWidth / 2) + (item.offsetWidth / 2);
+            updateCarouselActiveState(container, inputId);
+        }
+    }, 100);
+
+    // Dynamic scroll detection
+    container.onscroll = () => {
+        clearTimeout(container.scrollTimeout);
+        container.scrollTimeout = setTimeout(() => {
+            updateCarouselActiveState(container, inputId);
+        }, 50);
+    };
 }
 
-function adjustCarouselDay(containerId, inputId, delta) {
-    const input = document.getElementById(inputId);
-    let day = parseInt(input.value) + delta;
-    if (day < 1) day = 31;
-    if (day > 31) day = 1;
+function updateCarouselActiveState(container, inputId) {
+    const items = container.querySelectorAll('.carousel-item');
+    const containerCenter = container.scrollLeft + (container.offsetWidth / 2);
+    let closestDay = 1;
+    let minDiff = Infinity;
 
-    renderCarouselDayPicker(containerId, inputId, day);
+    items.forEach(item => {
+        const itemCenter = item.offsetLeft + (item.offsetWidth / 2);
+        const diff = Math.abs(containerCenter - itemCenter);
+
+        if (diff < minDiff) {
+            minDiff = diff;
+            closestDay = parseInt(item.dataset.day);
+        }
+        item.classList.remove('active');
+    });
+
+    const activeItem = container.querySelector(`[data-day="${closestDay}"]`);
+    if (activeItem) activeItem.classList.add('active');
+
+    document.getElementById(inputId).value = closestDay;
 }
 
 // --- Core Logic ---

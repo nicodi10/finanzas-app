@@ -309,12 +309,16 @@
             <form id="form-billing">
                 <div class="form-group">
                     <label>Fecha de Cierre (Día)</label>
-                    <div id="picker-billing-closing" class="carousel-picker"></div>
+                    <div id="wrapper-billing-closing" class="carousel-wrapper">
+                        <div id="picker-billing-closing" class="carousel-scroll"></div>
+                    </div>
                     <input type="hidden" id="billing-closing-day">
                 </div>
                 <div class="form-group">
                     <label>Fecha de Vencimiento (Día)</label>
-                    <div id="picker-billing-due" class="carousel-picker"></div>
+                    <div id="wrapper-billing-due" class="carousel-wrapper">
+                        <div id="picker-billing-due" class="carousel-scroll"></div>
+                    </div>
                     <input type="hidden" id="billing-due-day">
                 </div>
                 <button type="submit" class="btn-primary">Actualizar Fechas</button>
@@ -333,19 +337,19 @@
                 <input type="hidden" id="card-edit-id">
                 <div class="form-group">
                     <label>Banco</label>
-                    <input type="text" id="card-bank" list="bank-list" placeholder="Selecciona o escribe..." required>
-                    <datalist id="bank-list">
-                        <option value="BNA (Banco Nación)">
-                        <option value="Galicia">
-                        <option value="Santander">
-                        <option value="Macro">
-                        <option value="BBVA">
-                        <option value="Hipotecario">
-                        <option value="Patagonia">
-                        <option value="Brubank">
-                        <option value="Mercado Pago">
-                        <option value="Naranja X">
-                    </datalist>
+                    <select id="card-bank" required>
+                        <option value="" disabled selected>Selecciona un banco...</option>
+                        <option value="BNA (Banco Nación)">BNA (Banco Nación)</option>
+                        <option value="Galicia">Galicia</option>
+                        <option value="Santander">Santander</option>
+                        <option value="Macro">Macro</option>
+                        <option value="BBVA">BBVA</option>
+                        <option value="Hipotecario">Hipotecario</option>
+                        <option value="Patagonia">Patagonia</option>
+                        <option value="Brubank">Brubank</option>
+                        <option value="Mercado Pago">Mercado Pago</option>
+                        <option value="Naranja X">Naranja X</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Red</label>
