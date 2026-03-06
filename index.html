@@ -248,7 +248,19 @@
                 </div>
                 <div class="form-group" id="group-fixed-month">
                     <label>Mes de inicio / aplicación</label>
-                    <input type="month" id="fixed-month" required>
+                    <div class="custom-picker" id="picker-fixed-month" data-input="fixed-month">
+                        <div class="year-selector">
+                            <button type="button" class="btn-year"
+                                onclick="adjustPickerYear('picker-fixed-month', -1)"><i
+                                    class="fa-solid fa-chevron-left"></i></button>
+                            <span>2024</span>
+                            <button type="button" class="btn-year"
+                                onclick="adjustPickerYear('picker-fixed-month', 1)"><i
+                                    class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                        <div class="month-picker-container"></div>
+                        <input type="hidden" id="fixed-month">
+                    </div>
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="fixed-has-end"
@@ -257,7 +269,19 @@
                 </div>
                 <div class="form-group hidden" id="group-fixed-end">
                     <label>Válido hasta (inclusive)</label>
-                    <input type="month" id="fixed-end-month">
+                    <div class="custom-picker" id="picker-fixed-end-month" data-input="fixed-end-month">
+                        <div class="year-selector">
+                            <button type="button" class="btn-year"
+                                onclick="adjustPickerYear('picker-fixed-end-month', -1)"><i
+                                    class="fa-solid fa-chevron-left"></i></button>
+                            <span>2024</span>
+                            <button type="button" class="btn-year"
+                                onclick="adjustPickerYear('picker-fixed-end-month', 1)"><i
+                                    class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                        <div class="month-picker-container"></div>
+                        <input type="hidden" id="fixed-end-month">
+                    </div>
                 </div>
                 <button type="submit" class="btn-primary" id="btn-save-fixed">Guardar</button>
                 <button type="button" class="btn-primary"
@@ -367,7 +391,19 @@
                 </div>
                 <div class="form-group">
                     <label>Mes de inicio</label>
-                    <input type="month" id="purchase-start-month" required>
+                    <div class="custom-picker" id="picker-purchase-start-month" data-input="purchase-start-month">
+                        <div class="year-selector">
+                            <button type="button" class="btn-year"
+                                onclick="adjustPickerYear('picker-purchase-start-month', -1)"><i
+                                    class="fa-solid fa-chevron-left"></i></button>
+                            <span>2024</span>
+                            <button type="button" class="btn-year"
+                                onclick="adjustPickerYear('picker-purchase-start-month', 1)"><i
+                                    class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                        <div class="month-picker-container"></div>
+                        <input type="hidden" id="purchase-start-month">
+                    </div>
                 </div>
                 <button type="submit" class="btn-primary">Guardar</button>
                 <button type="button" class="btn-primary"

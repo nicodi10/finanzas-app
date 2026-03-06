@@ -167,7 +167,8 @@ function showModal(modalId, isEdit = false) {
         if (modalId === 'modal-fixed') {
             document.getElementById('modal-fixed-title').innerText = 'Nuevo Gasto';
             document.getElementById('fixed-edit-id').value = '';
-            document.getElementById('fixed-month').value = ym;
+            initPicker('picker-fixed-month', ym);
+            initPicker('picker-fixed-end-month', '');
             document.getElementById('fixed-has-end').checked = false;
             document.getElementById('group-fixed-end').classList.add('hidden');
         } else if (modalId === 'modal-card') {
@@ -179,7 +180,7 @@ function showModal(modalId, isEdit = false) {
             document.getElementById('modal-purchase-title').innerText = 'Nueva Cuota';
             document.getElementById('purchase-edit-id').value = '';
             toggleInstallments(false);
-            document.getElementById('purchase-start-month').value = ym;
+            initPicker('picker-purchase-start-month', ym);
         }
     }
     document.getElementById(modalId).classList.add('active');
@@ -215,6 +216,68 @@ function toggleInstallments(isRecurring) {
         group.classList.remove('hidden');
         input.setAttribute('required', '');
     }
+}
+
+// --- Custom Month Picker Logic ---
+const MONTH_NAMES_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+function initPicker(pickerId, val) {
+    const picker = document.getElementById(pickerId);
+    if (!picker) return;
+
+    let year, month;
+    if (val) {
+        [year, month] = val.split('-').map(Number);
+    } else {
+        const now = state.currentDate;
+        year = now.getFullYear();
+        month = now.getMonth() + 1;
+    }
+
+    picker.dataset.year = year;
+    picker.dataset.month = month;
+    if (val) picker.querySelector('input').value = val;
+    else picker.querySelector('input').value = '';
+
+    renderPicker(pickerId);
+}
+
+function renderPicker(pickerId) {
+    const picker = document.getElementById(pickerId);
+    const container = picker.querySelector('.month-picker-container');
+    const yearSpan = picker.querySelector('.year-selector span');
+
+    const year = parseInt(picker.dataset.year);
+    const selectedMonth = parseInt(picker.dataset.month);
+    const hiddenInput = picker.querySelector('input');
+    const currentValue = hiddenInput.value;
+
+    yearSpan.innerText = year;
+
+    container.innerHTML = MONTH_NAMES_SHORT.map((name, idx) => {
+        const m = idx + 1;
+        const ym = `${year}-${String(m).padStart(2, '0')}`;
+        const isActive = currentValue === ym;
+        return `<button type="button" class="month-btn ${isActive ? 'active' : ''}" onclick="selectPickerMonth('${pickerId}', ${m})">${name}</button>`;
+    }).join('');
+}
+
+function adjustPickerYear(pickerId, delta) {
+    const picker = document.getElementById(pickerId);
+    picker.dataset.year = parseInt(picker.dataset.year) + delta;
+    renderPicker(pickerId);
+}
+
+function selectPickerMonth(pickerId, month) {
+    const picker = document.getElementById(pickerId);
+    const year = picker.dataset.year;
+    const ym = `${year}-${String(month).padStart(2, '0')}`;
+
+    const hiddenInput = picker.querySelector('input');
+    hiddenInput.value = ym;
+    picker.dataset.month = month;
+
+    renderPicker(pickerId);
 }
 
 // --- Core Logic ---
@@ -451,11 +514,12 @@ function editExpense(id) {
     document.getElementById('fixed-type').value = e.type;
     document.getElementById('fixed-name').value = e.name;
     document.getElementById('fixed-amount').value = e.amount;
-    document.getElementById('fixed-month').value = e.month;
+    document.getElementById('fixed-amount').value = e.amount;
+    initPicker('picker-fixed-month', e.month);
     const hasEnd = !!e.endMonth;
     document.getElementById('fixed-has-end').checked = hasEnd;
     document.getElementById('group-fixed-end').classList.toggle('hidden', !hasEnd);
-    document.getElementById('fixed-end-month').value = e.endMonth || '';
+    initPicker('picker-fixed-end-month', e.endMonth || '');
     showModal('modal-fixed', true);
 }
 
@@ -500,7 +564,7 @@ function editPurchase(id) {
     document.getElementById('purchase-amount').value = p.amount;
     document.getElementById('purchase-recurring').checked = p.isRecurring;
     document.getElementById('purchase-installments').value = p.installments;
-    document.getElementById('purchase-start-month').value = p.startMonth;
+    initPicker('picker-purchase-start-month', p.startMonth);
     toggleInstallments(p.isRecurring);
     showModal('modal-purchase', true);
 }
