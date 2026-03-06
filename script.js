@@ -498,7 +498,11 @@ function updateCarouselActiveState(container, inputId) {
     });
 
     const activeItem = container.querySelector(`[data-day="${closestDay}"]`);
-    if (activeItem) activeItem.classList.add('active');
+    if (activeItem && !activeItem.classList.contains('active')) {
+        activeItem.classList.add('active');
+        // Feedback háptico sutil
+        if (navigator.vibrate) navigator.vibrate(15);
+    }
 
     document.getElementById(inputId).value = closestDay;
 }
@@ -660,27 +664,69 @@ function viewCardDetails(cardId) {
     const card = state.cards.find(c => c.id === cardId);
     if (!card) return;
 
+    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const monthName = months[state.currentDate.getMonth()];
     const ym = `${state.currentDate.getFullYear()}-${String(state.currentDate.getMonth() + 1).padStart(2, '0')}`;
     const cycle = card.billingCycles[ym] || { closingDay: '---', dueDay: '---' };
 
     document.getElementById('detail-card-name').innerText = sanitize(card.bank);
     const hero = document.getElementById('card-hero-container');
     hero.innerHTML = `
-        <div class="card-preview" style="background: linear-gradient(135deg, ${card.color}EE, #1e293b);">
+        <div class="card-preview" id="card-swipe-target" style="background: linear-gradient(135deg, ${card.color}EE, #1e293b);">
             <div class="card-logo-overlay" onclick="editCard('${card.id}')" style="cursor:pointer">${getCardLogo(card.type)}</div>
             <div class="card-bank">${sanitize(card.bank)}</div>
             <div class="card-chip"></div>
             <div class="card-number-display">**** **** **** ${sanitize(card.last4)}</div>
             <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 600; margin-top: 10px;">
                 <div onclick="openBillingModal()" style="cursor:pointer; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:8px;">
-                    CIERRE: ${cycle.closingDay} | VTTO: ${cycle.dueDay} <i class="fa-solid fa-calendar-pen" style="margin-left:5px"></i>
+                    CIERRE: ${cycle.closingDay} ${monthName} | VTTO: ${cycle.dueDay} ${monthName} <i class="fa-solid fa-calendar-pen" style="margin-left:5px"></i>
                 </div>
                 <span>NICO DIAZ</span>
+            </div>
+            <div class="swipe-hint">
+                <i class="fa-solid fa-chevron-left"></i>
+                <span>Desliza</span>
+                <i class="fa-solid fa-chevron-right"></i>
             </div>
         </div>
     `;
     renderPurchases();
+    initSwipeNavigation();
     showView('card-details');
+}
+
+let touchStartX = 0;
+function initSwipeNavigation() {
+    const target = document.getElementById('card-swipe-target');
+    if (!target) return;
+
+    target.ontouchstart = e => {
+        touchStartX = e.changedTouches[0].screenX;
+    };
+
+    target.ontouchend = e => {
+        const touchEndX = e.changedTouches[0].screenX;
+        handleSwipe(touchStartX, touchEndX);
+    };
+}
+
+function handleSwipe(start, end) {
+    const threshold = 50;
+    const diff = start - end;
+    const currentIndex = state.cards.findIndex(c => c.id === state.selectedCardId);
+
+    if (Math.abs(diff) > threshold) {
+        if (diff > 0) {
+            // Swipe Left -> Next Card
+            const nextIdx = (currentIndex + 1) % state.cards.length;
+            viewCardDetails(state.cards[nextIdx].id);
+        } else {
+            // Swipe Right -> Prev Card
+            const prevIdx = (currentIndex - 1 + state.cards.length) % state.cards.length;
+            viewCardDetails(state.cards[prevIdx].id);
+        }
+        if (navigator.vibrate) navigator.vibrate(20);
+    }
 }
 
 function openBillingModal(card) {

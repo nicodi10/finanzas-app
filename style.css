@@ -379,6 +379,36 @@ select:focus {
     margin-top: 15px;
 }
 
+.swipe-hint {
+    position: absolute;
+    bottom: 45px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    font-size: 0.7rem;
+    color: white;
+    opacity: 0.3;
+    pointer-events: none;
+    animation: pulseHint 2s infinite;
+}
+
+@keyframes pulseHint {
+
+    0%,
+    100% {
+        opacity: 0.2;
+        transform: translateY(0);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: translateY(-2px);
+    }
+}
+
 /* Color Picker UX */
 .color-picker-grid {
     display: flex;
