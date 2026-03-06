@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mis-consumos-v8';
+const CACHE_NAME = 'mis-consumos-v9';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -47,6 +47,7 @@ self.addEventListener('fetch', (event) => {
         })
     );
 });
+
 
 
 
