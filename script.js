@@ -396,6 +396,25 @@ function selectPickerMonth(pickerId, month) {
     renderPicker(pickerId);
 }
 
+function renderDayPicker(containerId, inputId, selectedDay) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    let html = '';
+    for (let day = 1; day <= 31; day++) {
+        const isActive = parseInt(selectedDay) === day;
+        html += `<button type="button" class="day-btn ${isActive ? 'active' : ''}" 
+                 onclick="selectPickerDay('${inputId}', ${day}, '${containerId}')">${day}</button>`;
+    }
+    container.innerHTML = html;
+}
+
+function selectPickerDay(inputId, day, containerId) {
+    const input = document.getElementById(inputId);
+    input.value = day;
+    renderDayPicker(containerId, inputId, day);
+}
+
 // --- Core Logic ---
 function getMonthlyStats() {
     const year = state.currentDate.getFullYear();
@@ -576,13 +595,37 @@ function viewCardDetails(cardId) {
     showView('card-details');
 }
 
-function openBillingModal() {
-    const card = state.cards.find(c => c.id === state.selectedCardId);
+function openBillingModal(card) {
+    if (!card) card = state.cards.find(c => c.id === state.selectedCardId);
+    if (!card) return;
     const ym = `${state.currentDate.getFullYear()}-${String(state.currentDate.getMonth() + 1).padStart(2, '0')}`;
     document.getElementById('billing-modal-date').innerText = ym;
-    const cycle = card.billingCycles[ym] || { closingDay: '', dueDay: '' };
-    document.getElementById('billing-closing-day').value = cycle.closingDay;
-    document.getElementById('billing-due-day').value = cycle.dueDay;
+
+    const billing = (card.billingCycles && card.billingCycles[ym]) || { closingDay: '', dueDay: '' };
+
+    document.getElementById('billing-closing-day').value = billing.closingDay || '';
+    document.getElementById('billing-due-day').value = billing.dueDay || '';
+
+    // Initialize Day Pickers
+    renderDayPicker('picker-billing-closing', 'billing-closing-day', billing.closingDay);
+    renderDayPicker('picker-billing-due', 'billing-due-day', billing.dueDay);
+
+    const form = document.getElementById('form-billing');
+    form.onsubmit = function (e) {
+        e.preventDefault();
+        const closingDay = document.getElementById('billing-closing-day').value;
+        const dueDay = document.getElementById('billing-due-day').value;
+
+        if (!closingDay || !dueDay) return alert('Por favor selecciona ambas fechas.');
+
+        if (!card.billingCycles) card.billingCycles = {};
+        card.billingCycles[ym] = { closingDay: parseInt(closingDay), dueDay: parseInt(dueDay) };
+
+        saveData();
+        closeModal();
+        viewCardDetails(card.id);
+    };
+
     showModal('modal-billing', true);
 }
 

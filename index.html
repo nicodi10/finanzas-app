@@ -309,11 +309,13 @@
             <form id="form-billing">
                 <div class="form-group">
                     <label>Fecha de Cierre (Día)</label>
-                    <input type="number" id="billing-closing-day" placeholder="Ej: 20" min="1" max="31" required>
+                    <div id="picker-billing-closing" class="day-picker-container"></div>
+                    <input type="hidden" id="billing-closing-day">
                 </div>
                 <div class="form-group">
                     <label>Fecha de Vencimiento (Día)</label>
-                    <input type="number" id="billing-due-day" placeholder="Ej: 05" min="1" max="31" required>
+                    <div id="picker-billing-due" class="day-picker-container"></div>
+                    <input type="hidden" id="billing-due-day">
                 </div>
                 <button type="submit" class="btn-primary">Actualizar Fechas</button>
                 <button type="button" class="btn-primary"
