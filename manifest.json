@@ -1,7 +1,7 @@
 {
   "name": "Mis Consumos",
   "short_name": "Consumos",
-  "description": "Tu gestor personal de gastos y tarjetas",
+  "description": "Mi gestor personal de gastos y tarjetas - Desarrollado por Nico Diaz",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",

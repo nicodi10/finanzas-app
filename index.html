@@ -197,7 +197,7 @@
 
             <div style="margin-top: 30px; text-align: center; color: var(--text-secondary); font-size: 0.8rem;">
                 <p>Mis consumos v3.1</p>
-                <p>Desarrollado con <i class="fa-solid fa-heart" style="color:var(--danger)"></i> por Antigravity</p>
+                <p>Desarrollado con <i class="fa-solid fa-heart" style="color:var(--danger)"></i> por Nico Diaz</p>
             </div>
         </div>
     </div>
@@ -381,7 +381,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js')
+                navigator.serviceWorker.register('./service_worker.js')
                     .then(reg => console.log('Service Worker Registrado!', reg))
                     .catch(err => console.error('Error al registrar Service Worker', err));
             });
