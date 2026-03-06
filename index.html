@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mis consumos - Gestor de Gastos</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/10384/10384161.png">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Consumos">
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="view-login" class="view glass"
+        style="position:fixed; inset:0; z-index:2000; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--bg-color); text-align:center; padding:30px;">
+        <div class="icon-box"
+            style="width:80px; height:80px; background:var(--primary); color:white; font-size:2.5rem; margin-bottom:20px; border-radius:24px;">
+            <i class="fa-solid fa-wallet"></i>
+        </div>
+        <h1 style="font-size:2rem; margin-bottom:10px;">Mis consumos</h1>
+        <p style="color:var(--text-secondary); margin-bottom:40px;">Tu control financiero, sincronizado en todos tus
+            dispositivos.</p>
+
+        <div id="g_id_onload" data-client_id="TU_GOOGLE_CLIENT_ID" data-context="signin" data-ux_mode="popup"
+            data-callback="handleCredentialResponse" data-auto_prompt="false">
+        </div>
+        <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="filled_blue"
+            data-text="signin_with" data-size="large" data-logo_alignment="left">
+        </div>
+        <button onclick="guestLogin()"
+            style="margin-top:15px; background:transparent; border:1px solid var(--glass-border); color:var(--text-secondary); padding:10px 20px; border-radius:12px; cursor:pointer; font-size:0.8rem; width:100%; max-width:240px;">
+            Continuar sin cuenta (Local)
+        </button>
+        <p style="margin-top:20px; font-size:0.8rem; opacity:0.5;">Nota: Sin cuenta Google, los datos solo se guardarán
+            en este dispositivo.</p>
+    </div>
+
+    <div class="container hidden" id="main-app-container">
+        <!-- Dashboard View -->
+        <div id="view-dashboard" class="view">
+            <header>
+                <div class="profile-info">
+                    <h1 id="dashboard-greeting-title">Hola! 👋</h1>
+                    <p>Gestiona tus gastos del mes</p>
+                </div>
+            </header>
+
+            <h3 id="current-date-text"
+                style="text-align: center; color: var(--text-secondary); margin-bottom: 20px; font-size: 1.1rem; font-weight: 600;">
+                Marzo, 2024</h3>
+
+            <div class="balance-card glass">
+                <p class="balance-label">Gasto Total Proyectado</p>
+                <h2 class="balance-amount" id="total-expense-display">$0,00</h2>
+                <div class="balance-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Fijos/Variables</span>
+                        <span class="stat-value" id="fixed-total-display">$0,00</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Tarjetas</span>
+                        <span class="stat-value down" id="cards-total-display">$0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-header">
+                <h2>Detalle de Consumo</h2>
+                <button class="btn-icon" onclick="showModal('modal-fixed')">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+            <div id="fixed-expenses-list">
+                <!-- Items injected here (including the summary card row from JS) -->
+            </div>
+        </div>
+
+        <!-- Cards View -->
+        <div id="view-cards" class="view hidden">
+            <header>
+                <div class="profile-info">
+                    <h1>Mis Tarjetas</h1>
+                    <p>Administra tus plásticos</p>
+                </div>
+                <button class="btn-icon" onclick="showModal('modal-card')">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </header>
+            <div id="cards-list-full"></div>
+        </div>
+
+        <!-- Months/Stats View -->
+        <div id="view-stats" class="view hidden">
+            <header>
+                <div class="profile-info">
+                    <h1>Resumen</h1>
+                    <p>Detalle por mes</p>
+                </div>
+            </header>
+
+            <div class="month-nav">
+                <button class="nav-arrow" onclick="changeMonth(-1)">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <span id="stats-date-text">Marzo, 2024</span>
+                <button class="nav-arrow" onclick="changeMonth(1)">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <div class="balance-card glass" style="margin-bottom: 20px; text-align: center; padding: 15px;">
+                <p class="balance-label">Total del Mes</p>
+                <h2 class="balance-amount" id="stats-total-display" style="font-size: 2rem;">$0,00</h2>
+            </div>
+
+            <div id="stats-details-list"></div>
+        </div>
+
+        <!-- Card Details View -->
+        <div id="view-card-details" class="view hidden">
+            <header>
+                <button class="btn-icon" onclick="showView('dashboard')">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <h2 id="detail-card-name">Tarjeta</h2>
+                <div></div>
+            </header>
+            <div id="card-hero-container"></div>
+            <div class="section-header">
+                <h2>Consumos</h2>
+                <button class="btn-icon" onclick="showModal('modal-purchase')">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+            <div id="purchases-list"></div>
+        </div>
+
+        <!-- Settings View -->
+        <div id="view-settings" class="view hidden">
+            <header>
+                <div class="profile-info">
+                    <h1>Ajustes</h1>
+                    <p>Configuración de la cuenta</p>
+                </div>
+            </header>
+            <div class="glass" style="padding: 20px; border-radius: 20px; margin-top: 20px;">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                    <div class="icon-box"
+                        style="width: 50px; height: 50px; border-radius: 50%; background: var(--primary); color: white; display:flex; justify-content:center; align-items:center; font-size: 1.5rem;">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div>
+                        <h3 id="settings-user-name" style="margin: 0;">Usuario</h3>
+                        <p id="settings-user-email" style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
+                            email</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="btn-primary"
+                        style="flex: 1; background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--text-primary); font-size: 0.9rem;"
+                        onclick="exportData()">
+                        <i class="fa-solid fa-file-export"></i> Exportar
+                    </button>
+                    <button class="btn-primary"
+                        style="flex: 1; background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--text-primary); font-size: 0.9rem;"
+                        onclick="document.getElementById('import-file').click()">
+                        <i class="fa-solid fa-file-import"></i> Importar
+                    </button>
+                    <input type="file" id="import-file" style="display: none;" accept=".json"
+                        onchange="importData(event)">
+                </div>
+
+                <button class="btn-primary" style="background: var(--danger); width: 100%; margin-bottom: 15px;"
+                    onclick="wipeData()">
+                    <i class="fa-solid fa-trash-can"></i> Borrar todos mis datos
+                </button>
+                <button class="btn-primary"
+                    style="background: transparent; border: 1px solid var(--danger); color: var(--danger); width: 100%;"
+                    onclick="logout()">
+                    <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
+                </button>
+            </div>
+
+            <div style="margin-top: 30px; text-align: center; color: var(--text-secondary); font-size: 0.8rem;">
+                <p>Mis consumos v3.1</p>
+                <p>Desarrollado con <i class="fa-solid fa-heart" style="color:var(--danger)"></i> por Antigravity</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav glass">
+        <a href="#" class="nav-item active" onclick="showView('dashboard')">
+            <i class="fa-solid fa-house"></i>
+            <span>Inicio</span>
+        </a>
+        <a href="#" class="nav-item" onclick="showView('stats')">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>Meses</span>
+        </a>
+        <a href="#" class="nav-item" onclick="showModal('modal-fixed')">
+            <i class="fa-solid fa-circle-plus" style="font-size: 2rem; color: var(--primary);"></i>
+        </a>
+        <a href="#" class="nav-item" onclick="showView('cards')">
+            <i class="fa-solid fa-credit-card"></i>
+            <span>Tarjetas</span>
+        </a>
+        <a href="#" class="nav-item" onclick="showView('settings')">
+            <i class="fa-solid fa-gear"></i>
+            <span>Ajustes</span>
+        </a>
+    </nav>
+
+    <!-- Modal Fixed/Variable -->
+    <div id="modal-fixed" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-fixed-title">Nuevo Gasto</h3>
+            <form id="form-fixed">
+                <input type="hidden" id="fixed-edit-id">
+                <div class="form-group">
+                    <label>Tipo de Gasto</label>
+                    <select id="fixed-type">
+                        <option value="fixed">Gasto Fijo (Desde un mes)</option>
+                        <option value="variable">Gasto Mensual (Solo un mes)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Concepto</label>
+                    <input type="text" id="fixed-name" placeholder="Ej: Supermercado o Alquiler" required>
+                </div>
+                <div class="form-group">
+                    <label>Monto</label>
+                    <input type="number" id="fixed-amount" placeholder="0.00" step="0.01" required>
+                </div>
+                <div class="form-group" id="group-fixed-month">
+                    <label>Mes de inicio / aplicación</label>
+                    <input type="month" id="fixed-month" required>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="fixed-has-end"
+                        onchange="document.getElementById('group-fixed-end').classList.toggle('hidden', !this.checked)">
+                    <label for="fixed-has-end">¿Tiene fecha de finalización?</label>
+                </div>
+                <div class="form-group hidden" id="group-fixed-end">
+                    <label>Válido hasta (inclusive)</label>
+                    <input type="month" id="fixed-end-month">
+                </div>
+                <button type="submit" class="btn-primary" id="btn-save-fixed">Guardar</button>
+                <button type="button" class="btn-primary"
+                    style="background:transparent; border:1px solid var(--glass-border);"
+                    onclick="closeModal()">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Billing Dates (Monthly) -->
+    <div id="modal-billing" class="modal">
+        <div class="modal-content">
+            <h3>Fechas del Ciclo</h3>
+            <p style="font-size: 0.8rem; opacity:0.7; margin-bottom: 20px;">Configura las fechas para el mes de <span
+                    id="billing-modal-date" style="color:var(--primary); font-weight:700;"></span></p>
+            <form id="form-billing">
+                <div class="form-group">
+                    <label>Fecha de Cierre (Día)</label>
+                    <input type="number" id="billing-closing-day" placeholder="Ej: 20" min="1" max="31" required>
+                </div>
+                <div class="form-group">
+                    <label>Fecha de Vencimiento (Día)</label>
+                    <input type="number" id="billing-due-day" placeholder="Ej: 05" min="1" max="31" required>
+                </div>
+                <button type="submit" class="btn-primary">Actualizar Fechas</button>
+                <button type="button" class="btn-primary"
+                    style="background:transparent; border:1px solid var(--glass-border); margin-top: 10px;"
+                    onclick="closeModal()">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Credit Card -->
+    <div id="modal-card" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-card-title">Nueva Tarjeta</h3>
+            <form id="form-card">
+                <input type="hidden" id="card-edit-id">
+                <div class="form-group">
+                    <label>Banco</label>
+                    <input type="text" id="card-bank" list="bank-list" placeholder="Selecciona o escribe..." required>
+                    <datalist id="bank-list">
+                        <option value="Santander">
+                        <option value="Galicia">
+                        <option value="BBVA">
+                        <option value="Macro">
+                        <option value="Brubank">
+                        <option value="ICBC">
+                        <option value="HSBC">
+                        <option value="Patagonia">
+                        <option value="Naranja X">
+                        <option value="Mercado Pago">
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label>Red</label>
+                    <select id="card-type">
+                        <option value="visa">Visa</option>
+                        <option value="mastercard">Mastercard</option>
+                        <option value="amex">Amex</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Últimos 4 dígitos</label>
+                    <input type="number" id="card-last4" placeholder="1234"
+                        oninput="if(this.value.length > 4) this.value = this.value.slice(0,4);" required>
+                </div>
+                <div class="form-group">
+                    <label>Color de Tarjeta</label>
+                    <div class="color-picker-grid" id="color-picker-ui">
+                        <!-- Colors injected here -->
+                    </div>
+                    <input type="hidden" id="card-color" value="#38bdf8">
+                </div>
+                <button type="submit" class="btn-primary">Guardar Tarjeta</button>
+                <button type="button" id="btn-delete-card" class="btn-primary"
+                    style="background: var(--danger); display: none; margin-top: 10px;"
+                    onclick="deleteCardFromModal()">Eliminar Tarjeta</button>
+                <button type="button" class="btn-primary"
+                    style="background:transparent; border:1px solid var(--glass-border); margin-top: 10px;"
+                    onclick="closeModal()">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Purchase -->
+    <div id="modal-purchase" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-purchase-title">Nueva Cuota</h3>
+            <form id="form-purchase">
+                <input type="hidden" id="purchase-edit-id">
+                <div class="form-group">
+                    <label>Concepto</label>
+                    <input type="text" id="purchase-name" placeholder="Ej: Zapatillas" required>
+                </div>
+                <div class="form-group">
+                    <label>Monto Total</label>
+                    <input type="number" id="purchase-amount" placeholder="0.00" step="0.01" required>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="purchase-recurring" onchange="toggleInstallments(this.checked)">
+                    <label for="purchase-recurring">Mismo monto todos los meses</label>
+                </div>
+                <div class="form-group" id="group-installments">
+                    <label>Cantidad de Cuotas</label>
+                    <input type="number" id="purchase-installments" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Mes de inicio</label>
+                    <input type="month" id="purchase-start-month" required>
+                </div>
+                <button type="submit" class="btn-primary">Guardar</button>
+                <button type="button" class="btn-primary"
+                    style="background:transparent; border:1px solid var(--glass-border);"
+                    onclick="closeModal()">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('Service Worker Registrado!', reg))
+                    .catch(err => console.error('Error al registrar Service Worker', err));
+            });
+        }
+    </script>
+</body>
+
+</html>

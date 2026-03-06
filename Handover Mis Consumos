@@ -1,0 +1,66 @@
+# Documento de Traspaso: Proyecto "Mis consumos"
+
+Este documento contiene toda la información necesaria para continuar el desarrollo del proyecto en otra instancia de Antigravity o migrarlo a Android Studio.
+
+## 🏗 Arquitectura y Tecnologías
+- **Frontend**: HTML5, CSS3 (Vanilla), JavaScript (ES6+).
+- **Diseño**: Glassmorphism, Modo Oscuro, Tipografía 'Outfit'.
+- **Persistencia actual**: `localStorage` (v3).
+- **Iconografía**: Font Awesome 6.4.0.
+- **Autenticación**: Google Identity Services (GSI).
+
+## 🚀 Funcionalidades Clave Implementadas
+
+### 1. Gestión de Gastos
+- **Gastos Mensuales**: Gastos puntuales para un mes y año específico.
+- **Gastos Fijos Programados**: 
+    - Selección de mes de inicio.
+    - Opciones de fecha de finalización.
+    - **Cuotas Inteligentes**: Si un gasto fijo tiene fecha de fin, se muestra un badge con el progreso (ej: `01/03`).
+- **Navegación Dinámica**: Flechas para desplazarse entre meses con actualización automática de saldos.
+
+### 2. Gestión de Tarjetas de Crédito
+- **Tarjetas Consolidadas**: En el inicio solo aparece una fila resumen con el total de todas las tarjetas.
+- **Cierre y Vencimiento Mensual**: Configuración de fechas de ciclo específicas para cada mes.
+- **Datalist de Bancos**: Selector con bancos principales y opción de escritura libre.
+- **Visualización Premium**: Vista de detalles con tarjeta física simulada (Visa, Mastercard, Amex).
+- **CRUD Completo**: Edición y eliminación de tarjetas (incluyendo limpieza de consumos asociados).
+
+### 3. Sistema de Login & Acceso
+- **Pantalla de Bienvenida**: Bloqueo total del contenido hasta la autenticación.
+- **Login de Google**: Integrado mediante `client_id` (Google Identity Services).
+- **Modo Invitado (Bypass)**: Botón para acceder localmente y evitar bloqueos por errores de protocolo API.
+
+## 🛡 Seguridad
+- **Sanitización XSS**: Implementada mediante la función `sanitize()` que limpia todas las entradas del usuario antes de renderizarlas en el DOM.
+- **Delegación de Auth**: El manejo de identidad se delega a Google.
+- **Aislamiento de Estado**: Los datos no se disparan hasta que la sesión es validada.
+
+## 📱 Guía de Migración a Android Studio (APK)
+
+Para convertir este proyecto en una app oficial:
+1. **Directorio Assets**: Copia `index.html`, `style.css` y `script.js` en `app/src/main/assets/`.
+2. **Configuración WebView**: 
+    ```java
+    webView.getSettings().setJavaScriptEnabled(true);
+    webView.getSettings().setDomStorageEnabled(true); // Muy importante para guardar datos
+    webView.getSettings().setAllowFileAccess(true);
+    ```
+3. **Google Login en APK**:
+    - Genera el certificado SHA-1 de tu PC de desarrollo.
+    - Regístralo en Google Cloud Console bajo una credencial tipo "Android".
+    - Usa el nombre de paquete correcto (ej: `com.nicodiaz.misconsumos`).
+
+## 🛠 Configuración de Google API
+1. Ve a [Google Cloud Console](https://console.cloud.google.com/).
+2. Crea el cliente OAuth 2.0.
+3. **URIs Autorizadas**: Añade `http://localhost` y tu dominio de producción.
+4. **Client ID**: Pégalo en la línea 35 de `index.html`.
+
+## 📦 Cómo Importar en otro Antigravity
+1. Copia la carpeta del proyecto a la nueva computadora.
+2. Abre la carpeta en la nueva instancia de Antigravity.
+3. Sube este archivo `handover_mis_consumos.md` al chat y pídele: *"Lee este documento de traspaso y ayúdame a continuar con el proyecto".*
+
+---
+**Desarrollado con ❤️ por Antigravity para Nico Diaz.**
