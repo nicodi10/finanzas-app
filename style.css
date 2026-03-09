@@ -8,6 +8,7 @@
 
 :root {
     --primary: #38bdf8;
+    --secondary: #818cf8;
     --primary-hover: #0ea5e9;
     --bg-color: #f1f5f9;
     --bg-accent: #ffffff;
@@ -31,6 +32,7 @@
     --glass-border: rgba(255, 255, 255, 0.08);
     --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
     --nav-bg: rgba(15, 23, 42, 0.95);
+    --secondary: #a78bfa;
 }
 
 h1,
@@ -127,11 +129,14 @@ header {
 
 .profile-info h1 {
     font-size: 1.5rem;
-    font-weight: 700;
+    font-weight: 800;
+    color: var(--text-main);
+    /* Respaldo */
     background: linear-gradient(to right, var(--primary), var(--secondary));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+    display: inline-block;
 }
 
 .profile-info p {
