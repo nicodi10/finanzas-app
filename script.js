@@ -1,28 +1,4 @@
-// --- Firebase Configuration ---
-const firebaseConfig = {
-    apiKey: "AIzaSyCZIVq0dkwHKX9v00fusxCvkyZQFfXjHbw",
-    authDomain: "finanzas-app-14a70.firebaseapp.com",
-    projectId: "finanzas-app-14a70",
-    storageBucket: "finanzas-app-14a70.firebasestorage.app",
-    messagingSenderId: "137607555145",
-    appId: "1:137607555145:web:74554f6a2fd0c5defcb798"
-};
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-
-// Enable offline persistence
-db.enablePersistence()
-    .catch((err) => {
-        if (err.code == 'failed-precondition') {
-            console.warn("Múltiples pestañas abiertas, persistencia solo funciona en una.");
-        } else if (err.code == 'unimplemented') {
-            console.warn("El navegador no soporta persistencia offline.");
-        }
-    });
 
 // --- State Management ---
 let state = {
@@ -31,8 +7,7 @@ let state = {
     expenses: [], // {id, type: 'fixed'|'variable', name, amount, month: 'YYYY-MM', endMonth: 'YYYY-MM'|null}
     cards: [],    // {id, bank, type, last4, color, billingCycles: { 'YYYY-MM': {closingDay, dueDay} }}
     purchases: [], // {id, cardId, name, amount, isRecurring, installments, startMonth}
-    selectedCardId: null,
-    unsubscribeSync: null
+    selectedCardId: null
 };
 
 const COLOR_PALETTE = ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#4ade80', '#94a3b8', '#1e293b'];
@@ -65,15 +40,7 @@ function init() {
     if (userSession) {
         document.getElementById('view-login').style.display = 'none';
         document.getElementById('main-app-container').classList.remove('hidden');
-
-        // Se carga primero lo local para rapidez, luego se sincroniza con la nube
         loadData();
-
-        // Intentar sesión en Firebase si hay sesión guardada
-        const session = JSON.parse(userSession);
-        if (session.id !== 'guest') {
-            console.log("Iniciando sincronización con la nube...");
-        }
     } else {
         document.getElementById('view-login').style.display = 'flex';
         document.getElementById('main-app-container').classList.add('hidden');
@@ -93,45 +60,13 @@ function init() {
     }
 }
 
-function handleCredentialResponse(response) {
-    // Decodificación segura de JWT para manejar caracteres UTF-8 (como tildes)
-    const base64Url = response.credential.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-
-    const responsePayload = JSON.parse(jsonPayload);
-    const userData = {
-        id: responsePayload.sub,
-        name: responsePayload.name,
-        email: responsePayload.email
-    };
-
-    localStorage.setItem('ff_user_session', JSON.stringify(userData));
-
-    // Auth con Firebase usando el token de Google
-    const credential = firebase.auth.GoogleAuthProvider.credential(response.credential);
-    auth.signInWithCredential(credential).then(() => {
-        console.log("Conectado a la nube exitosamente");
-        startCloudSyncListener();
-    }).catch(err => {
-        console.error("Error al conectar con la nube:", err);
-    });
-
-    document.getElementById('view-login').style.display = 'none';
-    document.getElementById('main-app-container').classList.remove('hidden');
-    loadData();
-}
-
 function guestLogin() {
     let userName = prompt("¿Cuál es tu nombre?", "Invitado");
     if (!userName || userName.trim() === '') userName = "Invitado";
 
     localStorage.setItem('ff_user_session', JSON.stringify({
-        id: 'guest',
-        name: userName.trim(),
-        email: 'local@device'
+        id: 'local',
+        name: userName.trim()
     }));
     document.getElementById('view-login').style.display = 'none';
     document.getElementById('main-app-container').classList.remove('hidden');
@@ -169,31 +104,6 @@ function wipeData() {
     }
 }
 
-function updateSyncStatus(status) {
-    const icon = document.getElementById('sync-icon');
-    const text = document.getElementById('sync-text');
-    if (!icon || !text) return;
-
-    if (status === 'syncing') {
-        icon.className = 'fa-solid fa-arrows-rotate fa-spin';
-        text.innerText = 'Sincronizando...';
-        icon.style.color = 'var(--primary)';
-    } else if (status === 'synced') {
-        icon.className = 'fa-solid fa-cloud-check';
-        text.innerText = 'Nube actualizada';
-        icon.style.color = 'var(--success)';
-    } else if (status === 'local') {
-        icon.className = 'fa-solid fa-cloud-slash';
-        text.innerText = 'Modo Local';
-        icon.style.color = 'var(--text-secondary)';
-    } else if (status === 'error') {
-        icon.className = 'fa-solid fa-cloud-exclamation';
-        text.innerText = 'Error de conexión';
-        icon.style.color = 'var(--danger)';
-    }
-}
-
-// Modificar saveData para usar el status
 function saveData() {
     const data = {
         expenses: state.expenses,
@@ -201,94 +111,7 @@ function saveData() {
         purchases: state.purchases
     };
     localStorage.setItem('finanzas_data_v3', JSON.stringify(data));
-
-    // Sincronizar con Firebase si el usuario está logueado
-    if (auth.currentUser) {
-        updateSyncStatus('syncing');
-        db.collection('users').doc(auth.currentUser.uid).set(data)
-            .then(() => {
-                console.log("Nube actualizada ✅");
-                updateSyncStatus('synced');
-            })
-            .catch(err => {
-                console.error("Error al guardar en la nube:", err);
-                updateSyncStatus('error');
-            });
-    } else {
-        updateSyncStatus('local');
-    }
 }
-
-function startCloudSyncListener() {
-    if (!auth.currentUser) return;
-
-    // Si ya hay un listener activo, no crear otro
-    if (state.unsubscribeSync) return;
-
-    updateSyncStatus('syncing');
-
-    state.unsubscribeSync = db.collection('users').doc(auth.currentUser.uid)
-        .onSnapshot((doc) => {
-            if (doc.exists) {
-                const cloudData = doc.data();
-
-                // Solo actualizamos si los datos son diferentes para evitar re-renderizados infinitos
-                console.log("Datos recibidos de la nube ☁️");
-
-                // Actualizamos estado local
-                state.expenses = cloudData.expenses || [];
-                state.cards = cloudData.cards || [];
-                state.purchases = cloudData.purchases || [];
-
-                // Guardamos en localStorage para persistencia offline
-                localStorage.setItem('finanzas_data_v3', JSON.stringify({
-                    expenses: state.expenses,
-                    cards: state.cards,
-                    purchases: state.purchases
-                }));
-
-                renderDashboard();
-                updateSyncStatus('synced');
-            } else {
-                // Si el doc no existe, subimos lo local por primera vez SOLO si hay datos locales
-                if (state.expenses.length > 0 || state.cards.length > 0 || state.purchases.length > 0) {
-                    saveData();
-                } else {
-                    updateSyncStatus('synced'); // No hay nada local ni en nube, está sincronizado (vacío)
-                }
-            }
-        }, (err) => {
-            console.error("Error en el listener de la nube:", err);
-            updateSyncStatus('error');
-        });
-}
-
-function stopCloudSyncListener() {
-    if (state.unsubscribeSync) {
-        state.unsubscribeSync();
-        state.unsubscribeSync = null;
-        updateSyncStatus('local');
-    }
-}
-
-// Escuchar cambios en auth de Firebase
-auth.onAuthStateChanged(user => {
-    if (user) {
-        startCloudSyncListener();
-    } else {
-        stopCloudSyncListener();
-        const userSession = localStorage.getItem('ff_user_session');
-        if (userSession) {
-            try {
-                const session = JSON.parse(userSession);
-                if (session.id !== 'guest') {
-                    console.warn("La sesión de Firebase expiró o el equipo está offline.");
-                    updateSyncStatus('error');
-                }
-            } catch (e) { }
-        }
-    }
-});
 
 function exportData() {
     const data = localStorage.getItem('finanzas_data_v3');
@@ -1032,49 +855,5 @@ document.getElementById('form-purchase').onsubmit = (e) => {
     }
     saveData(); closeModal(); renderPurchases(); renderDashboard();
 };
-
-function forceSync() {
-    if (!auth.currentUser) {
-        alert("Inicia sesión para poder sincronizar con la nube.");
-        return;
-    }
-
-    updateSyncStatus('syncing');
-
-    // Forzar lectura primero para no pisar por accidente si tenemos menos datos
-    db.collection('users').doc(auth.currentUser.uid).get().then(doc => {
-        if (doc.exists) {
-            const cloudData = doc.data();
-            const cloudTotal = (cloudData.expenses?.length || 0) + (cloudData.cards?.length || 0) + (cloudData.purchases?.length || 0);
-            const localTotal = state.expenses.length + state.cards.length + state.purchases.length;
-
-            if (cloudTotal > localTotal) {
-                // Hay más cosas en la nube, descargamos en lugar de pisar
-                state.expenses = cloudData.expenses || [];
-                state.cards = cloudData.cards || [];
-                state.purchases = cloudData.purchases || [];
-
-                localStorage.setItem('finanzas_data_v3', JSON.stringify({
-                    expenses: state.expenses,
-                    cards: state.cards,
-                    purchases: state.purchases
-                }));
-
-                renderDashboard();
-                updateSyncStatus('synced');
-                alert("Se descargaron datos actualizados de la nube.");
-                return;
-            }
-        }
-
-        // Si no existen datos o los locales son mayores o iguales, forzamos subida
-        saveData();
-        alert("Sincronización terminada. Tus datos fueron respaldados/actualizados correctamente.");
-    }).catch(err => {
-        console.error("Error forzando sincronización:", err);
-        updateSyncStatus('error');
-        alert("Error de red. Tus cambios locales se guardarán cuando vuelva la conexión.");
-    });
-}
 
 init();
