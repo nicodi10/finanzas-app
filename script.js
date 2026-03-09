@@ -13,11 +13,20 @@ let state = {
     theme: localStorage.getItem('ff_theme') || 'light'
 };
 
+const COLOR_PALETTE = ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#4ade80', '#94a3b8', '#1e293b'];
+
+const ALL_ICONS = [
+    'fa-cart-shopping', 'fa-basket-shopping', 'fa-utensils', 'fa-motorcycle', 'fa-gas-pump',
+    'fa-bolt', 'fa-droplet', 'fa-wifi', 'fa-house-user', 'fa-heart-pulse',
+    'fa-pills', 'fa-shirt', 'fa-bag-shopping', 'fa-clapperboard', 'fa-dumbbell',
+    'fa-bus', 'fa-plane', 'fa-graduation-cap', 'fa-gift', 'fa-credit-card',
+    'fa-burger', 'fa-coffee', 'fa-ice-cream', 'fa-pizza-slice', 'fa-car',
+    'fa-scissors', 'fa-paw', 'fa-music', 'fa-gamepad', 'fa-camera'
+];
+
 function applyTheme() {
     document.documentElement.setAttribute('data-theme', state.theme);
-    const themeStatus = document.getElementById('theme-status');
-    const themeIcon = document.querySelector('#btn-theme-toggle i');
-    if (themeStatus) themeStatus.innerText = state.theme === 'dark' ? 'Activado' : 'Desactivado';
+    const themeIcon = document.querySelector('.theme-toggle-mini i');
     if (themeIcon) {
         themeIcon.className = state.theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
     }
@@ -27,11 +36,10 @@ function toggleTheme() {
     state.theme = state.theme === 'light' ? 'dark' : 'light';
     localStorage.setItem('ff_theme', state.theme);
     applyTheme();
+    if (navigator.vibrate) navigator.vibrate(20);
 }
 
 let notifiedToday = new Set(); // Cache para evitar bucles de notificaciones en la sesión
-
-const COLOR_PALETTE = ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#4ade80', '#94a3b8', '#1e293b'];
 
 const CATEGORY_ICONS = {
     'supermercado': 'fa-basket-shopping',
@@ -61,12 +69,64 @@ const CATEGORY_ICONS = {
     'tarjeta': 'fa-credit-card'
 };
 
-function getCategoryIcon(name) {
+function getCategoryIcon(name, manualIcon) {
+    if (manualIcon) return manualIcon;
     const n = name.toLowerCase();
     for (const [key, icon] of Object.entries(CATEGORY_ICONS)) {
         if (n.includes(key)) return icon;
     }
     return 'fa-cart-shopping'; // icono por defecto
+}
+
+function renderIconPicker(containerId, inputId, currentIcon) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = ALL_ICONS.map(icon => `
+        <div class="icon-option ${currentIcon === icon ? 'active' : ''}" 
+             onclick="selectIcon('${containerId}', '${inputId}', '${icon}')">
+            <i class="fa-solid ${icon}"></i>
+        </div>
+    `).join('');
+}
+
+function selectIcon(containerId, inputId, icon) {
+    document.getElementById(inputId).value = icon;
+    document.querySelectorAll(`#${containerId} .icon-option`).forEach(opt => {
+        const i = opt.querySelector('i');
+        opt.classList.toggle('active', i.classList.contains(icon));
+    });
+}
+
+function getCardAlerts(cardId, amount) {
+    const card = state.cards.find(c => c.id === cardId);
+    if (!card || amount <= 0) return null;
+
+    const today = new Date();
+    const currentDay = today.getDate();
+    const ym = `${state.currentDate.getFullYear()}-${String(state.currentDate.getMonth() + 1).padStart(2, '0')}`;
+    const cycle = card.billingCycles[ym];
+
+    if (!cycle) return null;
+
+    const closing = parseInt(cycle.closingDay);
+    const due = parseInt(cycle.dueDay);
+    let alerts = [];
+
+    // Check Closing
+    if (closing >= currentDay && closing <= currentDay + 7) {
+        const daysLeft = closing - currentDay;
+        // Solo para el punto rojo y auditoría, la notificación real se dispara desde renderNotifications si hace falta
+        alerts.push({ type: 'closing', days: daysLeft, label: daysLeft === 0 ? '¡Hoy cierra!' : `Cierra en ${daysLeft} días` });
+    }
+
+    // Check Due Date
+    if (due >= currentDay && due <= currentDay + 7) {
+        const daysLeft = due - currentDay;
+        alerts.push({ type: 'due', days: daysLeft, label: daysLeft === 0 ? '¡Vence hoy!' : `Vence en ${daysLeft} días` });
+    }
+
+    return alerts.length > 0 ? alerts : null;
 }
 
 // Swipe for delete logic
@@ -451,6 +511,8 @@ function showModal(modalId, isEdit = false) {
         if (modalId === 'modal-fixed') {
             document.getElementById('modal-fixed-title').innerText = 'Nuevo Gasto';
             document.getElementById('fixed-edit-id').value = '';
+            document.getElementById('fixed-icon').value = '';
+            renderIconPicker('icon-picker-fixed', 'fixed-icon', '');
             initPicker('picker-fixed-month', ym);
             initPicker('picker-fixed-end-month', '');
             document.getElementById('fixed-has-end').checked = false;
@@ -465,6 +527,8 @@ function showModal(modalId, isEdit = false) {
         } else if (modalId === 'modal-purchase') {
             document.getElementById('modal-purchase-title').innerText = 'Nueva Cuota';
             document.getElementById('purchase-edit-id').value = '';
+            document.getElementById('purchase-icon').value = '';
+            renderIconPicker('icon-picker-purchase', 'purchase-icon', '');
             initPicker('picker-purchase-start-month', ym);
         }
     }
@@ -592,91 +656,16 @@ function selectPickerMonth(pickerId, month) {
 }
 
 function renderNotifications() {
-    const area = document.getElementById('notifications-area-cards');
     const navDot = document.getElementById('nav-card-dot');
-    if (!area) return;
-
-    const today = new Date();
-    const currentDay = today.getDate();
-    const currentYear = today.getFullYear();
-    const currentMonthIdx = today.getMonth();
-    const ym = `${currentYear}-${String(currentMonthIdx + 1).padStart(2, '0')}`;
-
-    const cardSummaryCurrent = {};
-    state.cards.forEach(c => cardSummaryCurrent[c.id] = 0);
-
-    state.purchases.forEach(p => {
-        const start = new Date(p.startMonth + '-02');
-        const diff = (currentYear - start.getFullYear()) * 12 + (currentMonthIdx - start.getMonth());
-        if (diff >= 0) {
-            if (p.isRecurring) {
-                cardSummaryCurrent[p.cardId] += parseFloat(p.amount);
-            } else if (diff < p.installments) {
-                cardSummaryCurrent[p.cardId] += parseFloat(p.amount) / parseInt(p.installments);
-            }
-        }
-    });
-
-    let html = '';
+    const { cardSummary } = getMonthlyStats();
     let hasAlerts = false;
 
     state.cards.forEach(card => {
-        let cycle = card.billingCycles && card.billingCycles[ym];
-        if (!cycle && card.billingCycles) {
-            const keys = Object.keys(card.billingCycles).sort();
-            if (keys.length > 0) cycle = card.billingCycles[keys[keys.length - 1]];
-        }
-
-        if (!cycle) return;
-
-        const closing = parseInt(cycle.closingDay);
-        const due = parseInt(cycle.dueDay);
-        const amount = cardSummaryCurrent[card.id] || 0;
-
-        if (amount <= 0) return;
-
-        // Check Closing
-        if (closing >= currentDay && closing <= currentDay + 7) {
-            hasAlerts = true;
-            const daysLeft = closing - currentDay;
-            if (state.notificationsEnabled) {
-                if (daysLeft === 0) showLocalNotification("¡Hoy cierra!", `Tu tarjeta ${card.bank} cierra HOY.`);
-                else if (daysLeft === 1) showLocalNotification("Cierra mañana", `Tu tarjeta ${card.bank} cierra MAÑANA.`);
-            }
-            html += `
-                <div class="glass" style="margin-bottom: 12px; padding: 12px 15px; border-left: 4px solid var(--primary); display: flex; align-items: center; gap: 12px;">
-                    <i class="fa-solid fa-calendar-check" style="color: var(--primary); font-size: 1.2rem;"></i>
-                    <div style="flex: 1;">
-                        <p style="margin: 0; font-size: 0.85rem; font-weight: 600;">${daysLeft === 0 ? '¡Hoy cierra!' : `Cierra en ${daysLeft} días`}: ${sanitize(card.bank)}</p>
-                        <p style="margin: 0; font-size: 0.75rem; opacity: 0.7;">Saldo: $${amount.toLocaleString('es-AR')}</p>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Check Due Date
-        if (due >= currentDay && due <= currentDay + 7) {
-            hasAlerts = true;
-            const daysLeft = due - currentDay;
-            if (state.notificationsEnabled) {
-                if (daysLeft === 0) showLocalNotification("¡Vence hoy!", `Hoy vence tu tarjeta ${card.bank}.`);
-                else if (daysLeft === 1) showLocalNotification("Vence mañana", `Mañana vence tu tarjeta ${card.bank}.`);
-            }
-            html += `
-                <div class="glass" style="margin-bottom: 12px; padding: 12px 15px; border-left: 4px solid var(--danger); display: flex; align-items: center; gap: 12px;">
-                    <i class="fa-solid fa-circle-exclamation" style="color: var(--danger); font-size: 1.2rem;"></i>
-                    <div style="flex: 1;">
-                        <p style="margin: 0; font-size: 0.85rem; font-weight: 600;">${daysLeft === 0 ? '¡Vence hoy!' : `Vence en ${daysLeft} días`}: ${sanitize(card.bank)}</p>
-                        <p style="margin: 0; font-size: 0.75rem; opacity: 0.7;">Total: $${amount.toLocaleString('es-AR')}</p>
-                    </div>
-                </div>
-            `;
-        }
+        const amount = cardSummary[card.id] || 0;
+        const alerts = getCardAlerts(card.id, amount);
+        if (alerts) hasAlerts = true;
     });
 
-    area.innerHTML = html;
-
-    // Solo mostrar el punto si hay alertas y NO estamos en la vista de tarjetas y NO han sido "vistas"
     if (navDot) {
         if (hasAlerts && state.currentView !== 'cards' && !state.alertsSeen) {
             navDot.style.display = 'block';
@@ -872,7 +861,7 @@ function renderDashboard() {
                 installmentText = ` <span style="font-size: 0.75rem; background: rgba(56, 189, 248, 0.15); color: var(--primary); padding: 2px 8px; border-radius: 8px; margin-left: 6px; font-weight: 700;">${String(cur).padStart(2, '0')}/${String(total).padStart(2, '0')}</span>`;
             }
 
-            const iconClass = getCategoryIcon(e.name);
+            const iconClass = getCategoryIcon(e.name, e.icon);
 
             return `
                 <div class="swipe-item-container">
@@ -923,14 +912,30 @@ function renderDashboard() {
         cardsFull.innerHTML = state.cards.map(c => {
             const ym = `${state.currentDate.getFullYear()}-${String(state.currentDate.getMonth() + 1).padStart(2, '0')}`;
             const cycle = c.billingCycles[ym] || { closingDay: '--', dueDay: '--' };
-            return `
-                <div class="expense-item glass" onclick="viewCardDetails('${c.id}')">
-                    <div class="icon-box" style="background: ${c.color}22; color: ${c.color}; font-size: 1.8rem;">${getCardLogo(c.type)}</div>
-                    <div class="expense-info">
-                        <div class="expense-name">${sanitize(c.bank)}</div>
-                        <div class="expense-category">Vto: ${cycle.dueDay} | Total: $${(cardSummary[c.id] || 0).toLocaleString('es-AR')}</div>
+            const amount = cardSummary[c.id] || 0;
+            const alerts = getCardAlerts(c.id, amount);
+
+            let alertHtml = '';
+            if (alerts) {
+                alertHtml = alerts.map(a => `
+                    <div style="margin-top: 5px; font-size: 0.75rem; color: ${a.type === 'due' ? 'var(--danger)' : 'var(--primary)'}; display:flex; align-items:center; gap:5px; font-weight:600;">
+                        <i class="fa-solid ${a.type === 'due' ? 'fa-circle-exclamation' : 'fa-calendar-check'}"></i>
+                        ${a.label}
                     </div>
-                    <i class="fa-solid fa-chevron-right" style="opacity: 0.3;"></i>
+                `).join('');
+            }
+
+            return `
+                <div style="margin-bottom: 12px;">
+                    <div class="expense-item glass" onclick="viewCardDetails('${c.id}')" style="margin-bottom: 0;">
+                        <div class="icon-box" style="background: ${c.color}22; color: ${c.color}; font-size: 1.8rem;">${getCardLogo(c.type)}</div>
+                        <div class="expense-info">
+                            <div class="expense-name">${sanitize(c.bank)}</div>
+                            <div class="expense-category">Vto: ${cycle.dueDay} | Total: $${amount.toLocaleString('es-AR')}</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="opacity: 0.3;"></i>
+                    </div>
+                    ${alertHtml}
                 </div>
             `;
         }).join('') || '<p style="text-align:center; padding:40px; opacity:0.5;">No hay tarjetas registradas</p>';
@@ -1085,7 +1090,7 @@ function renderPurchases() {
             else status = `Cuota ${cur}/${p.installments}`;
         }
 
-        const iconClass = getCategoryIcon(p.name);
+        const iconClass = getCategoryIcon(p.name, p.icon);
 
         return `
             <div class="swipe-item-container">
@@ -1120,6 +1125,8 @@ function editExpense(id) {
     document.getElementById('fixed-type').value = e.type;
     document.getElementById('fixed-name').value = e.name;
     document.getElementById('fixed-amount').value = e.amount;
+    document.getElementById('fixed-icon').value = e.icon || '';
+    renderIconPicker('icon-picker-fixed', 'fixed-icon', e.icon || '');
     initPicker('picker-fixed-month', e.month);
     const hasEnd = !!e.endMonth;
     document.getElementById('fixed-has-end').checked = hasEnd;
@@ -1168,10 +1175,10 @@ function editPurchase(id) {
     document.getElementById('purchase-edit-id').value = id;
     document.getElementById('purchase-name').value = p.name;
     document.getElementById('purchase-amount').value = p.amount;
-    document.getElementById('purchase-recurring').checked = p.isRecurring;
     document.getElementById('purchase-installments').value = p.installments;
+    document.getElementById('purchase-icon').value = p.icon || '';
+    renderIconPicker('icon-picker-purchase', 'purchase-icon', p.icon || '');
     initPicker('picker-purchase-start-month', p.startMonth);
-    toggleInstallments(p.isRecurring);
     showModal('modal-purchase', true);
 }
 
@@ -1194,6 +1201,7 @@ document.getElementById('form-fixed').onsubmit = (e) => {
         name: document.getElementById('fixed-name').value,
         amount: document.getElementById('fixed-amount').value,
         type: type,
+        icon: document.getElementById('fixed-icon').value,
         month: document.getElementById('fixed-month').value,
         endMonth: hasEnd ? document.getElementById('fixed-end-month').value : null
     };
@@ -1252,6 +1260,7 @@ document.getElementById('form-purchase').onsubmit = (e) => {
         amount: parseFloat(document.getElementById('purchase-amount').value),
         isRecurring: false,
         installments: parseInt(document.getElementById('purchase-installments').value) || 1,
+        icon: document.getElementById('purchase-icon').value,
         startMonth: document.getElementById('purchase-start-month').value
     };
     if (id) {

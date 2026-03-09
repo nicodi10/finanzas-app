@@ -59,6 +59,9 @@
     </div>
 
     <div class="container hidden" id="main-app-container">
+        <div class="theme-toggle-mini" id="theme-shortcut" onclick="toggleTheme()">
+            <i class="fa-solid fa-moon"></i>
+        </div>
         <!-- Dashboard View -->
         <div id="view-dashboard" class="view">
             <header style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -202,11 +205,6 @@
                     </div>
                 </div>
 
-                <button id="btn-theme-toggle" class="btn-settings-outline" onclick="toggleTheme()"
-                    style="border-color: var(--text-secondary); color: var(--text-main);">
-                    <i class="fa-solid fa-moon"></i> Modo Oscuro: <span id="theme-status">Desactivado</span>
-                </button>
-
                 <button id="btn-notifications" class="btn-settings-outline">
                     <i class="fa-solid fa-bell"></i> Activar Notificaciones
                 </button>
@@ -270,6 +268,11 @@
                 <div class="form-group">
                     <label>Monto</label>
                     <input type="number" id="fixed-amount" placeholder="0.00" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Icono (Opcional)</label>
+                    <div id="icon-picker-fixed" class="icon-picker-grid"></div>
+                    <input type="hidden" id="fixed-icon">
                 </div>
                 <div class="form-group" id="group-fixed-month" style="display: none;">
                     <label>Mes de inicio / aplicación</label>
@@ -417,6 +420,11 @@
                 <div class="form-group" id="group-installments">
                     <label>Cantidad de Cuotas</label>
                     <input type="number" id="purchase-installments" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Icono (Opcional)</label>
+                    <div id="icon-picker-purchase" class="icon-picker-grid"></div>
+                    <input type="hidden" id="purchase-icon">
                 </div>
                 <div class="form-group">
                     <label>Mes de inicio</label>
