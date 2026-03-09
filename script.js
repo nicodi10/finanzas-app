@@ -308,16 +308,19 @@ function showView(viewId) {
             picEl.innerHTML = `<i class="fa-solid fa-user"></i>`;
         }
 
-        // Dashboard Notification Button UI
+        // Settings Notification Button UI
         if (btnNotif) {
+            btnNotif.className = 'btn-settings-outline'; // Base class
+            btnNotif.style.opacity = '1';
+            btnNotif.style.color = '';
+            btnNotif.style.borderColor = '';
+
             if (Notification.permission === 'denied') {
                 btnNotif.innerHTML = `<i class="fa-solid fa-bell-slash"></i> Permisos Bloqueados`;
                 btnNotif.style.opacity = '0.5';
-                btnNotif.onclick = () => alert("Debes habilitar los permisos desde la configuración del navegador.");
+                btnNotif.onclick = () => alert("Habilita permisos en el navegador.");
             } else if (state.notificationsEnabled) {
                 btnNotif.innerHTML = `<i class="fa-solid fa-bell-slash"></i> Desactivar Notificaciones`;
-                btnNotif.style.color = 'var(--danger)';
-                btnNotif.style.borderColor = 'var(--danger)';
                 btnNotif.onclick = toggleNotifications;
             } else {
                 btnNotif.innerHTML = `<i class="fa-solid fa-bell"></i> Activar Notificaciones`;
@@ -490,23 +493,49 @@ function selectPickerMonth(pickerId, month) {
     renderPicker(pickerId);
 }
 
-function renderNotifications(cardSummary) {
+function renderNotifications() {
     const area = document.getElementById('notifications-area');
     if (!area) return;
 
     const today = new Date();
     const currentDay = today.getDate();
-    const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const currentYear = today.getFullYear();
+    const currentMonthIdx = today.getMonth();
+    const ym = `${currentYear}-${String(currentMonthIdx + 1).padStart(2, '0')}`;
+
+    // Calcular deuda real del mes actual
+    const cardSummaryCurrent = {};
+    state.cards.forEach(c => cardSummaryCurrent[c.id] = 0);
+
+    state.purchases.forEach(p => {
+        const start = new Date(p.startMonth + '-02');
+        const diff = (currentYear - start.getFullYear()) * 12 + (currentMonthIdx - start.getMonth());
+        if (diff >= 0) {
+            if (p.isRecurring) {
+                cardSummaryCurrent[p.cardId] += parseFloat(p.amount);
+            } else if (diff < p.installments) {
+                cardSummaryCurrent[p.cardId] += parseFloat(p.amount) / parseInt(p.installments);
+            }
+        }
+    });
 
     let html = '';
 
     state.cards.forEach(card => {
-        const cycle = card.billingCycles[ym];
+        // Fallback robusto para ciclos: Buscar el mas reciente si el actual no existe
+        let cycle = card.billingCycles && card.billingCycles[ym];
+        if (!cycle && card.billingCycles) {
+            const keys = Object.keys(card.billingCycles).sort();
+            if (keys.length > 0) cycle = card.billingCycles[keys[keys.length - 1]];
+        }
+
         if (!cycle) return;
 
         const closing = parseInt(cycle.closingDay);
         const due = parseInt(cycle.dueDay);
-        const amount = cardSummary[card.id] || 0;
+        const amount = cardSummaryCurrent[card.id] || 0;
+
+        if (amount <= 0) return;
 
         // Check Closing (next 7 days)
         if (closing >= currentDay && closing <= currentDay + 7 && amount > 0) {
@@ -697,7 +726,7 @@ function renderDashboard() {
     const statsTotalDisplay = document.getElementById('stats-total-display');
     if (statsTotalDisplay) statsTotalDisplay.innerText = `$${(fixedTotal + cardTotal).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
-    renderNotifications(cardSummary);
+    renderNotifications();
 
     const list = document.getElementById('fixed-expenses-list');
     if (list) {
