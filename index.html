@@ -61,10 +61,17 @@
     <div class="container hidden" id="main-app-container">
         <!-- Dashboard View -->
         <div id="view-dashboard" class="view">
-            <header>
+            <header style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div class="profile-info">
                     <h1 id="dashboard-greeting-title">Hola! 👋</h1>
                     <p>Gestiona tus gastos del mes</p>
+                </div>
+                <div id="sync-status-btn" onclick="forceSync()"
+                    style="text-align: center; cursor: pointer; padding: 8px 12px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px;">
+                    <i id="sync-icon" class="fa-solid fa-cloud"
+                        style="font-size: 1.2rem; margin-bottom: 5px; color: var(--text-secondary);"></i>
+                    <div id="sync-text" style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 600;">
+                        Estado</div>
                 </div>
             </header>
 

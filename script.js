@@ -1020,4 +1020,48 @@ document.getElementById('form-purchase').onsubmit = (e) => {
     saveData(); closeModal(); renderPurchases(); renderDashboard();
 };
 
+function forceSync() {
+    if (!auth.currentUser) {
+        alert("Inicia sesión para poder sincronizar con la nube.");
+        return;
+    }
+
+    updateSyncStatus('syncing');
+
+    // Forzar lectura primero para no pisar por accidente si tenemos menos datos
+    db.collection('users').doc(auth.currentUser.uid).get().then(doc => {
+        if (doc.exists) {
+            const cloudData = doc.data();
+            const cloudTotal = (cloudData.expenses?.length || 0) + (cloudData.cards?.length || 0) + (cloudData.purchases?.length || 0);
+            const localTotal = state.expenses.length + state.cards.length + state.purchases.length;
+
+            if (cloudTotal > localTotal) {
+                // Hay más cosas en la nube, descargamos en lugar de pisar
+                state.expenses = cloudData.expenses || [];
+                state.cards = cloudData.cards || [];
+                state.purchases = cloudData.purchases || [];
+
+                localStorage.setItem('finanzas_data_v3', JSON.stringify({
+                    expenses: state.expenses,
+                    cards: state.cards,
+                    purchases: state.purchases
+                }));
+
+                renderDashboard();
+                updateSyncStatus('synced');
+                alert("Se descargaron datos actualizados de la nube.");
+                return;
+            }
+        }
+
+        // Si no existen datos o los locales son mayores o iguales, forzamos subida
+        saveData();
+        alert("Sincronización terminada. Tus datos fueron respaldados/actualizados correctamente.");
+    }).catch(err => {
+        console.error("Error forzando sincronización:", err);
+        updateSyncStatus('error');
+        alert("Error de red. Tus cambios locales se guardarán cuando vuelva la conexión.");
+    });
+}
+
 init();
