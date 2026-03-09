@@ -75,9 +75,12 @@
                 </div>
             </header>
 
-            <h3 id="current-date-text"
-                style="text-align: center; color: var(--text-secondary); margin-bottom: 20px; font-size: 1.1rem; font-weight: 600;">
-                Marzo, 2024</h3>
+            <div style="display: flex; justify-content: center; margin-bottom: 25px;">
+                <h3 id="current-date-text"
+                    style="text-align: center; color: var(--primary); font-size: 1.8rem; font-weight: 800; background: var(--glass-bg); padding: 5px 20px; border-radius: 20px; border: 1px solid var(--primary); box-shadow: 0 4px 15px rgba(56, 189, 248, 0.15);">
+                    Marzo, 2024
+                </h3>
+            </div>
 
             <div class="balance-card glass">
                 <p class="balance-label">Gasto Total Proyectado</p>
@@ -255,7 +258,7 @@
                     <label>Monto</label>
                     <input type="number" id="fixed-amount" placeholder="0.00" step="0.01" required>
                 </div>
-                <div class="form-group" id="group-fixed-month">
+                <div class="form-group" id="group-fixed-month" style="display: none;">
                     <label>Mes de inicio / aplicación</label>
                     <div class="custom-picker" id="picker-fixed-month" data-input="fixed-month">
                         <div class="year-selector">
