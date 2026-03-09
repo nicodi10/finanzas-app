@@ -379,10 +379,10 @@ header {
 
 .modal-content {
     width: 100%;
-    background: #1e293b;
+    background: var(--bg-accent);
     border-radius: 30px 30px 0 0;
     padding: 30px;
-    max-height: 90vh;
+    max-height: 95vh;
     overflow-y: auto;
     animation: slideUp 0.3s ease-out;
 }
@@ -406,17 +406,25 @@ header {
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin-bottom: 8px;
+    font-weight: 600;
 }
 
 input,
 select {
     width: 100%;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-color);
     border: 1px solid var(--glass-border);
     padding: 12px 15px;
     border-radius: 12px;
-    color: white;
+    color: var(--text-main);
     font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+input::placeholder {
+    color: var(--text-main);
+    opacity: 0.4;
 }
 
 input:focus,
