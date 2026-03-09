@@ -140,8 +140,11 @@ function guestLogin() {
 function loadData() {
     const savedState = localStorage.getItem('finanzas_data_v3');
     if (savedState) {
-        state = { ...state, ...JSON.parse(savedState) };
-        state.currentDate = new Date();
+        // Prevent local data from overwriting cloud data if cloud sync has already populated state
+        if (!state.expenses.length && !state.cards.length && !state.purchases.length) {
+            state = { ...state, ...JSON.parse(savedState) };
+            state.currentDate = new Date();
+        }
     }
     renderColorPicker();
     renderDashboard();
@@ -246,8 +249,12 @@ function startCloudSyncListener() {
                 renderDashboard();
                 updateSyncStatus('synced');
             } else {
-                // Si el doc no existe, subimos lo local por primera vez
-                saveData();
+                // Si el doc no existe, subimos lo local por primera vez SOLO si hay datos locales
+                if (state.expenses.length > 0 || state.cards.length > 0 || state.purchases.length > 0) {
+                    saveData();
+                } else {
+                    updateSyncStatus('synced'); // No hay nada local ni en nube, está sincronizado (vacío)
+                }
             }
         }, (err) => {
             console.error("Error en el listener de la nube:", err);
