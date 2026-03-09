@@ -12,6 +12,49 @@ let state = {
 
 const COLOR_PALETTE = ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#4ade80', '#94a3b8', '#1e293b'];
 
+// --- Firebase Configuration ---
+// REEMPLAZA ESTO CON TUS DATOS DE LA CONSOLA DE FIREBASE
+const firebaseConfig = {
+    apiKey: "AIzaSyDDTgmBkEk2mI8jMY_oa1geLiA7TGposLA",
+    authDomain: "finanzapp-d9867.firebaseapp.com",
+    projectId: "finanzapp-d9867",
+    storageBucket: "finanzapp-d9867.firebasestorage.app",
+    messagingSenderId: "39346635170",
+    appId: "1:39346635170:web:37cc70f0d94a446c7632fb"
+};
+
+// Inicializar Firebase (Compat Mode)
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// --- Puente Google Identity Services -> Firebase Auth ---
+window.handleCredentialResponse = (response) => {
+    const credential = firebase.auth.GoogleAuthProvider.credential(response.credential);
+
+    auth.signInWithCredential(credential).then((result) => {
+        const user = result.user;
+        console.log("Sesión iniciada en Firebase:", user.displayName);
+
+        localStorage.setItem('ff_user_session', JSON.stringify({
+            id: user.uid,
+            name: user.displayName,
+            email: user.email,
+            photo: user.photoURL
+        }));
+
+        document.getElementById('view-login').style.display = 'none';
+        document.getElementById('main-app-container').classList.remove('hidden');
+
+        startCloudSync(user.uid);
+    }).catch((error) => {
+        console.error("Error en Firebase Auth con Google:", error);
+        alert("Error al sincronizar con Google. Revisa la consola.");
+    });
+};
+
 const BANK_IDENTITIES = {
     'santander': '#ec0000',
     'galicia': '#ff8200',
@@ -36,17 +79,22 @@ function sanitize(str) {
 }
 
 function init() {
-    const userSession = localStorage.getItem('ff_user_session');
-    if (userSession) {
+    const userSession = JSON.parse(localStorage.getItem('ff_user_session') || '{}');
+    if (userSession.id) {
         document.getElementById('view-login').style.display = 'none';
         document.getElementById('main-app-container').classList.remove('hidden');
-        loadData();
+
+        if (userSession.id !== 'local') {
+            startCloudSync(userSession.id);
+        } else {
+            loadData();
+        }
     } else {
         document.getElementById('view-login').style.display = 'flex';
         document.getElementById('main-app-container').classList.add('hidden');
     }
 
-    // Listener para autocompletar color de banco y actualizar la esfera dinámica
+    // Listener para autocompletar color de banco
     const bankInput = document.getElementById('card-bank');
     if (bankInput) {
         bankInput.addEventListener('change', (e) => {
@@ -76,19 +124,48 @@ function guestLogin() {
 function loadData() {
     const savedState = localStorage.getItem('finanzas_data_v3');
     if (savedState) {
-        // Prevent local data from overwriting cloud data if cloud sync has already populated state
-        if (!state.expenses.length && !state.cards.length && !state.purchases.length) {
-            state = { ...state, ...JSON.parse(savedState) };
-            state.currentDate = new Date();
-        }
+        const parsed = JSON.parse(savedState);
+        state.expenses = parsed.expenses || [];
+        state.cards = parsed.cards || [];
+        state.purchases = parsed.purchases || [];
+        state.currentDate = new Date();
     }
     renderColorPicker();
     renderDashboard();
 }
 
+function startCloudSync(uid) {
+    updateSyncUI('syncing');
+
+    db.collection('usuarios').doc(uid).onSnapshot((doc) => {
+        if (doc.exists) {
+            const cloudData = doc.data();
+            console.log("Datos recibidos de la nube:", cloudData);
+
+            state.expenses = cloudData.expenses || [];
+            state.cards = cloudData.cards || [];
+            state.purchases = cloudData.purchases || [];
+
+            saveDataLocalOnly();
+            renderDashboard();
+            updateSyncUI('synced');
+        } else {
+            console.log("No hay datos en la nube, subiendo los locales...");
+            loadData();
+            syncDataToCloud();
+        }
+    }, (error) => {
+        console.error("Error en Snapshot:", error);
+        updateSyncUI('error');
+        loadData();
+    });
+}
+
 function logout() {
-    localStorage.removeItem('ff_user_session');
-    location.reload();
+    auth.signOut().then(() => {
+        localStorage.removeItem('ff_user_session');
+        location.reload();
+    });
 }
 
 function wipeData() {
@@ -105,12 +182,61 @@ function wipeData() {
 }
 
 function saveData() {
+    saveDataLocalOnly();
+    syncDataToCloud();
+}
+
+function saveDataLocalOnly() {
     const data = {
         expenses: state.expenses,
         cards: state.cards,
         purchases: state.purchases
     };
     localStorage.setItem('finanzas_data_v3', JSON.stringify(data));
+}
+
+function syncDataToCloud() {
+    const userSession = JSON.parse(localStorage.getItem('ff_user_session') || '{}');
+    if (!userSession.id || userSession.id === 'local') return;
+
+    updateSyncUI('syncing');
+
+    const dataToSave = {
+        expenses: state.expenses,
+        cards: state.cards,
+        purchases: state.purchases,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    db.collection('usuarios').doc(userSession.id).set(dataToSave, { merge: true })
+        .then(() => {
+            updateSyncUI('synced');
+        })
+        .catch((e) => {
+            console.error("Error al subir a la nube:", e);
+            updateSyncUI('error');
+        });
+}
+
+function updateSyncUI(status) {
+    const icon = document.getElementById('sync-icon');
+    const text = document.getElementById('sync-text');
+    if (!icon || !text) return;
+
+    icon.className = 'fa-solid';
+    if (status === 'syncing') {
+        icon.classList.add('fa-cloud-arrow-up', 'fa-bounce');
+        icon.style.color = 'var(--primary)';
+        text.innerText = 'Sincronizando...';
+    } else if (status === 'synced') {
+        icon.classList.add('fa-cloud');
+        icon.style.color = '#4ade80';
+        text.innerText = 'Sincronizado';
+    } else {
+        icon.classList.add('fa-cloud-slash');
+        icon.style.color = 'var(--danger)';
+        text.innerText = 'Error Nube';
+    }
 }
 
 function exportData() {
