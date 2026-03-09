@@ -26,7 +26,7 @@ const ALL_ICONS = [
 
 function applyTheme() {
     document.documentElement.setAttribute('data-theme', state.theme);
-    const themeIcon = document.querySelector('.theme-toggle-mini i');
+    const themeIcon = document.querySelector('#btn-theme-toggle-settings i');
     if (themeIcon) {
         themeIcon.className = state.theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
     }
