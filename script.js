@@ -389,23 +389,22 @@ function syncDataToCloud() {
 }
 
 function updateSyncUI(status) {
-    const icon = document.getElementById('sync-icon');
+    const container = document.getElementById('sync-icon-container');
     const text = document.getElementById('sync-text');
-    if (!icon || !text) return;
+    if (!container || !text) return;
 
-    icon.className = 'fa-solid';
     if (status === 'syncing') {
         showSkeletons();
-        icon.classList.add('fa-cloud-arrow-up', 'fa-bounce');
-        icon.style.color = 'var(--primary)';
+        container.innerHTML = `<i id="sync-icon" class="fa-solid fa-cloud-arrow-up fa-bounce fa-stack-2x" style="color: var(--primary);"></i>`;
         text.innerText = 'Sincronizando...';
     } else if (status === 'synced') {
-        icon.classList.add('fa-cloud');
-        icon.style.color = 'var(--success)';
+        container.innerHTML = `
+            <i id="sync-icon" class="fa-solid fa-cloud fa-stack-2x" style="color: var(--success);"></i>
+            <i class="fa-solid fa-check fa-stack-1x" style="color: white; font-size: 0.6rem; transform: translateY(1px);"></i>
+        `;
         text.innerText = 'Sincronizado';
     } else {
-        icon.classList.add('fa-cloud-slash');
-        icon.style.color = 'var(--danger)';
+        container.innerHTML = `<i id="sync-icon" class="fa-solid fa-cloud-slash fa-stack-2x" style="color: var(--danger);"></i>`;
         text.innerText = 'Error Nube';
     }
 }

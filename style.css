@@ -444,6 +444,26 @@ select:focus {
     font-size: 1rem;
     margin-top: 10px;
     cursor: pointer;
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
+}
+
+.btn-outline {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    padding: 15px;
+    border-radius: 12px;
+    color: var(--text-main);
+    font-weight: 700;
+    font-size: 1rem;
+    margin-top: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-outline:active {
+    background: rgba(0, 0, 0, 0.05);
+    transform: scale(0.98);
 }
 
 /* Card Improvements */

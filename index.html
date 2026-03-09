@@ -73,8 +73,10 @@
                 </div>
                 <div id="sync-status-btn" onclick="forceSync()"
                     style="text-align: center; cursor: pointer; padding: 8px 12px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px;">
-                    <i id="sync-icon" class="fa-solid fa-cloud"
-                        style="font-size: 1.2rem; margin-bottom: 5px; color: var(--text-secondary);"></i>
+                    <span id="sync-icon-container" class="fa-stack" style="font-size: 0.8rem; margin-bottom: 5px;">
+                        <i id="sync-icon" class="fa-solid fa-cloud fa-stack-2x"
+                            style="color: var(--text-secondary);"></i>
+                    </span>
                     <div id="sync-text" style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 600;">
                         Estado</div>
                 </div>
@@ -315,9 +317,7 @@
                     </div>
                 </div>
                 <button type="submit" class="btn-primary" id="btn-save-fixed">Guardar</button>
-                <button type="button" class="btn-primary"
-                    style="background:transparent; border:1px solid var(--glass-border);"
-                    onclick="closeModal()">Cancelar</button>
+                <button type="button" class="btn-outline" onclick="closeModal()">Cancelar</button>
             </form>
         </div>
     </div>
@@ -344,9 +344,7 @@
                     <input type="hidden" id="billing-due-day">
                 </div>
                 <button type="submit" class="btn-primary">Actualizar Fechas</button>
-                <button type="button" class="btn-primary"
-                    style="background:transparent; border:1px solid var(--glass-border); margin-top: 10px;"
-                    onclick="closeModal()">Cancelar</button>
+                <button type="button" class="btn-outline" onclick="closeModal()">Cancelar</button>
             </form>
         </div>
     </div>
@@ -397,9 +395,7 @@
                 <button type="button" id="btn-delete-card" class="btn-primary"
                     style="background: var(--danger); display: none; margin-top: 10px;"
                     onclick="deleteCardFromModal()">Eliminar Tarjeta</button>
-                <button type="button" class="btn-primary"
-                    style="background:transparent; border:1px solid var(--glass-border); margin-top: 10px;"
-                    onclick="closeModal()">Cancelar</button>
+                <button type="button" class="btn-outline" onclick="closeModal()">Cancelar</button>
             </form>
         </div>
     </div>
@@ -444,9 +440,7 @@
                     </div>
                 </div>
                 <button type="submit" class="btn-primary">Guardar</button>
-                <button type="button" class="btn-primary"
-                    style="background:transparent; border:1px solid var(--glass-border);"
-                    onclick="closeModal()">Cancelar</button>
+                <button type="button" class="btn-outline" onclick="closeModal()">Cancelar</button>
             </form>
         </div>
     </div>
