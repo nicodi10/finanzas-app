@@ -35,7 +35,7 @@ let state = {
     unsubscribeSync: null
 };
 
-const COLOR_PALETTE = ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#4ade80', '#f87171', '#94a3b8', '#1e293b'];
+const COLOR_PALETTE = ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#4ade80', '#94a3b8', '#1e293b'];
 
 const BANK_IDENTITIES = {
     'santander': '#ec0000',
@@ -370,6 +370,8 @@ function showModal(modalId, isEdit = false) {
             initPicker('picker-fixed-end-month', '');
             document.getElementById('fixed-has-end').checked = false;
             document.getElementById('group-fixed-end').classList.add('hidden');
+            document.getElementById('fixed-type').value = 'fixed';
+            if (document.getElementById('group-fixed-end-wrap')) document.getElementById('group-fixed-end-wrap').style.display = 'block';
         } else if (modalId === 'modal-card') {
             document.getElementById('modal-card-title').innerText = 'Nueva Tarjeta';
             document.getElementById('card-edit-id').value = '';
@@ -387,6 +389,15 @@ function showModal(modalId, isEdit = false) {
 
 function closeModal() {
     document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+}
+
+function showModalForMonth(modalId) {
+    showModal(modalId);
+    if (modalId === 'modal-fixed') {
+        const year = state.currentDate.getFullYear();
+        const month = String(state.currentDate.getMonth() + 1).padStart(2, '0');
+        initPicker('picker-fixed-month', `${year}-${month}`);
+    }
 }
 
 // --- Helpers ---
@@ -878,11 +889,11 @@ function editExpense(id) {
     document.getElementById('fixed-type').value = e.type;
     document.getElementById('fixed-name').value = e.name;
     document.getElementById('fixed-amount').value = e.amount;
-    document.getElementById('fixed-amount').value = e.amount;
     initPicker('picker-fixed-month', e.month);
     const hasEnd = !!e.endMonth;
     document.getElementById('fixed-has-end').checked = hasEnd;
     document.getElementById('group-fixed-end').classList.toggle('hidden', !hasEnd);
+    if (document.getElementById('group-fixed-end-wrap')) document.getElementById('group-fixed-end-wrap').style.display = (e.type === 'fixed') ? 'block' : 'none';
     initPicker('picker-fixed-end-month', e.endMonth || '');
     showModal('modal-fixed', true);
 }
@@ -946,11 +957,12 @@ function deletePurchase(id) {
 document.getElementById('form-fixed').onsubmit = (e) => {
     e.preventDefault();
     const id = document.getElementById('fixed-edit-id').value;
-    const hasEnd = document.getElementById('fixed-has-end').checked;
+    const type = document.getElementById('fixed-type').value;
+    const hasEnd = type === 'fixed' && document.getElementById('fixed-has-end').checked;
     const data = {
         name: document.getElementById('fixed-name').value,
         amount: document.getElementById('fixed-amount').value,
-        type: document.getElementById('fixed-type').value,
+        type: type,
         month: document.getElementById('fixed-month').value,
         endMonth: hasEnd ? document.getElementById('fixed-end-month').value : null
     };

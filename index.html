@@ -141,6 +141,11 @@
             <div class="balance-card glass" style="margin-bottom: 20px; text-align: center; padding: 15px;">
                 <p class="balance-label">Total del Mes</p>
                 <h2 class="balance-amount" id="stats-total-display" style="font-size: 2rem;">$0,00</h2>
+                <button class="btn-primary"
+                    style="margin-top: 15px; font-size: 0.85rem; width: auto; display: inline-block; padding: 10px 20px;"
+                    onclick="showModalForMonth('modal-fixed')">
+                    <i class="fa-solid fa-plus"></i> Agregar gasto para este mes
+                </button>
             </div>
 
             <div id="stats-details-list"></div>
@@ -185,20 +190,6 @@
                         <p id="settings-user-email" style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">
                             email</p>
                     </div>
-                </div>
-                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <button class="btn-primary"
-                        style="flex: 1; background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--text-primary); font-size: 0.9rem;"
-                        onclick="exportData()">
-                        <i class="fa-solid fa-file-export"></i> Exportar
-                    </button>
-                    <button class="btn-primary"
-                        style="flex: 1; background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--text-primary); font-size: 0.9rem;"
-                        onclick="document.getElementById('import-file').click()">
-                        <i class="fa-solid fa-file-import"></i> Importar
-                    </button>
-                    <input type="file" id="import-file" style="display: none;" accept=".json"
-                        onchange="importData(event)">
                 </div>
 
                 <button class="btn-primary" style="background: var(--danger); width: 100%; margin-bottom: 15px;"
@@ -250,9 +241,10 @@
                 <input type="hidden" id="fixed-edit-id">
                 <div class="form-group">
                     <label>Tipo de Gasto</label>
-                    <select id="fixed-type">
-                        <option value="fixed">Gasto Fijo (Desde un mes)</option>
-                        <option value="variable">Gasto Mensual (Solo un mes)</option>
+                    <select id="fixed-type"
+                        onchange="document.getElementById('group-fixed-end-wrap').style.display = (this.value === 'fixed') ? 'block' : 'none'">
+                        <option value="fixed">Gasto Fijo</option>
+                        <option value="variable">Gasto Eventual</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -279,25 +271,27 @@
                         <input type="hidden" id="fixed-month">
                     </div>
                 </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="fixed-has-end"
-                        onchange="document.getElementById('group-fixed-end').classList.toggle('hidden', !this.checked)">
-                    <label for="fixed-has-end">¿Tiene fecha de finalización?</label>
-                </div>
-                <div class="form-group hidden" id="group-fixed-end">
-                    <label>Válido hasta (inclusive)</label>
-                    <div class="custom-picker" id="picker-fixed-end-month" data-input="fixed-end-month">
-                        <div class="year-selector">
-                            <button type="button" class="btn-year"
-                                onclick="adjustPickerYear('picker-fixed-end-month', -1)"><i
-                                    class="fa-solid fa-chevron-left"></i></button>
-                            <span>2024</span>
-                            <button type="button" class="btn-year"
-                                onclick="adjustPickerYear('picker-fixed-end-month', 1)"><i
-                                    class="fa-solid fa-chevron-right"></i></button>
+                <div id="group-fixed-end-wrap">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="fixed-has-end"
+                            onchange="document.getElementById('group-fixed-end').classList.toggle('hidden', !this.checked)">
+                        <label for="fixed-has-end">¿Tiene fecha de finalización?</label>
+                    </div>
+                    <div class="form-group hidden" id="group-fixed-end">
+                        <label>Válido hasta (inclusive)</label>
+                        <div class="custom-picker" id="picker-fixed-end-month" data-input="fixed-end-month">
+                            <div class="year-selector">
+                                <button type="button" class="btn-year"
+                                    onclick="adjustPickerYear('picker-fixed-end-month', -1)"><i
+                                        class="fa-solid fa-chevron-left"></i></button>
+                                <span>2024</span>
+                                <button type="button" class="btn-year"
+                                    onclick="adjustPickerYear('picker-fixed-end-month', 1)"><i
+                                        class="fa-solid fa-chevron-right"></i></button>
+                            </div>
+                            <div class="month-picker-container"></div>
+                            <input type="hidden" id="fixed-end-month">
                         </div>
-                        <div class="month-picker-container"></div>
-                        <input type="hidden" id="fixed-end-month">
                     </div>
                 </div>
                 <button type="submit" class="btn-primary" id="btn-save-fixed">Guardar</button>
