@@ -131,12 +131,14 @@ header {
     font-size: 1.5rem;
     font-weight: 800;
     color: var(--text-main);
-    /* Respaldo */
+    display: inline-block;
+}
+
+[data-theme="dark"] .profile-info h1 {
     background: linear-gradient(to right, var(--primary), var(--secondary));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    display: inline-block;
 }
 
 .profile-info p {

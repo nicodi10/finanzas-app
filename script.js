@@ -69,6 +69,19 @@ const CATEGORY_ICONS = {
     'tarjeta': 'fa-credit-card'
 };
 
+function getLuminance(hex) {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const a = [r, g, b].map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+    return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+}
+
+function getContrastColor(hexColor) {
+    if (!hexColor || hexColor.length < 7) return '#ffffff';
+    return getLuminance(hexColor) > 0.5 ? '#000000' : '#ffffff';
+}
+
 function getCategoryIcon(name, manualIcon) {
     if (manualIcon) return manualIcon;
     const n = name.toLowerCase();
@@ -388,7 +401,7 @@ function updateSyncUI(status) {
         text.innerText = 'Sincronizando...';
     } else if (status === 'synced') {
         icon.classList.add('fa-cloud');
-        icon.style.color = '#4ade80';
+        icon.style.color = 'var(--success)';
         text.innerText = 'Sincronizado';
     } else {
         icon.classList.add('fa-cloud-slash');
@@ -956,17 +969,21 @@ function viewCardDetails(cardId, animationClass) {
     const hero = document.getElementById('card-hero-container');
     const hasMultipleCards = state.cards.length > 1;
 
+    const contrastColor = getContrastColor(card.color);
+    const badgeBg = contrastColor === '#ffffff' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)';
+
     hero.innerHTML = `
-        <div class="card-preview ${animationClass || ''}" id="card-swipe-target" style="background: linear-gradient(135deg, ${card.color}EE, #1e293b);">
-            <div class="card-logo-overlay" onclick="editCard('${card.id}')" style="cursor:pointer">${getCardLogo(card.type)}</div>
-            <div class="card-bank">${sanitize(card.bank)}</div>
+        <div class="card-preview ${animationClass || ''}" id="card-swipe-target" 
+             style="background: linear-gradient(135deg, ${card.color}, #1e293b); color: ${contrastColor};">
+            <div class="card-logo-overlay" onclick="editCard('${card.id}')" style="cursor:pointer; color: ${contrastColor};">${getCardLogo(card.type)}</div>
+            <div class="card-bank" style="color: ${contrastColor};">${sanitize(card.bank)}</div>
             <div class="card-chip"></div>
-            <div class="card-number-display">**** **** **** ${sanitize(card.last4)}</div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 600; margin-top: 10px;">
-                <div onclick="openBillingModal()" style="cursor:pointer; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:8px;">
+            <div class="card-number-display" style="color: ${contrastColor};">**** **** **** ${sanitize(card.last4)}</div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 600; margin-top: 10px; color: ${contrastColor};">
+                <div onclick="openBillingModal()" style="cursor:pointer; background:${badgeBg}; padding:4px 8px; border-radius:8px; color: ${contrastColor};">
                     CIERRE: ${cycle.closingDay} ${monthName} | VTTO: ${cycle.dueDay} ${monthName} <i class="fa-solid fa-calendar-pen" style="margin-left:5px"></i>
                 </div>
-                <span>NICO DIAZ</span>
+                <span style="color: ${contrastColor}; opacity: 0.8;">NICO DIAZ</span>
             </div>
         </div>
     `;
