@@ -721,3 +721,42 @@ select:focus {
     transform: scale(0.98);
     opacity: 0.9;
 }
+
+.btn-logout-minimal {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 10px;
+    font-weight: 500;
+    margin-top: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.btn-logout-minimal:hover {
+    opacity: 1;
+    color: var(--danger);
+}
+
+.nav-notification-dot {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 8px;
+    height: 8px;
+    background: var(--danger);
+    border-radius: 50%;
+    border: 1.5px solid var(--bg-color);
+    display: none;
+}
+
+.nav-item {
+    position: relative;
+}

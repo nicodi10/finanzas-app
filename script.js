@@ -494,7 +494,8 @@ function selectPickerMonth(pickerId, month) {
 }
 
 function renderNotifications() {
-    const area = document.getElementById('notifications-area');
+    const area = document.getElementById('notifications-area-cards');
+    const navDot = document.getElementById('nav-card-dot');
     if (!area) return;
 
     const today = new Date();
@@ -503,7 +504,6 @@ function renderNotifications() {
     const currentMonthIdx = today.getMonth();
     const ym = `${currentYear}-${String(currentMonthIdx + 1).padStart(2, '0')}`;
 
-    // Calcular deuda real del mes actual
     const cardSummaryCurrent = {};
     state.cards.forEach(c => cardSummaryCurrent[c.id] = 0);
 
@@ -520,9 +520,9 @@ function renderNotifications() {
     });
 
     let html = '';
+    let hasAlerts = false;
 
     state.cards.forEach(card => {
-        // Fallback robusto para ciclos: Buscar el mas reciente si el actual no existe
         let cycle = card.billingCycles && card.billingCycles[ym];
         if (!cycle && card.billingCycles) {
             const keys = Object.keys(card.billingCycles).sort();
@@ -537,37 +537,39 @@ function renderNotifications() {
 
         if (amount <= 0) return;
 
-        // Check Closing (next 7 days)
-        if (closing >= currentDay && closing <= currentDay + 7 && amount > 0) {
+        // Check Closing
+        if (closing >= currentDay && closing <= currentDay + 7) {
+            hasAlerts = true;
             const daysLeft = closing - currentDay;
             if (state.notificationsEnabled) {
-                if (daysLeft === 0) showLocalNotification("¡Hoy cierra!", `Tu tarjeta ${card.bank} cierra HOY. Saldo: $${amount.toLocaleString('es-AR')}`);
-                else if (daysLeft === 1) showLocalNotification("Cierra mañana", `Tu tarjeta ${card.bank} cierra MAÑANA. Saldo: $${amount.toLocaleString('es-AR')}`);
+                if (daysLeft === 0) showLocalNotification("¡Hoy cierra!", `Tu tarjeta ${card.bank} cierra HOY.`);
+                else if (daysLeft === 1) showLocalNotification("Cierra mañana", `Tu tarjeta ${card.bank} cierra MAÑANA.`);
             }
             html += `
                 <div class="glass" style="margin-bottom: 12px; padding: 12px 15px; border-left: 4px solid var(--primary); display: flex; align-items: center; gap: 12px;">
                     <i class="fa-solid fa-calendar-check" style="color: var(--primary); font-size: 1.2rem;"></i>
                     <div style="flex: 1;">
                         <p style="margin: 0; font-size: 0.85rem; font-weight: 600;">${daysLeft === 0 ? '¡Hoy cierra!' : `Cierra en ${daysLeft} días`}: ${sanitize(card.bank)}</p>
-                        <p style="margin: 0; font-size: 0.75rem; opacity: 0.7;">Saldo acumulado: $${amount.toLocaleString('es-AR')}</p>
+                        <p style="margin: 0; font-size: 0.75rem; opacity: 0.7;">Saldo: $${amount.toLocaleString('es-AR')}</p>
                     </div>
                 </div>
             `;
         }
 
-        // Check Due Date (next 7 days)
-        if (due >= currentDay && due <= currentDay + 7 && amount > 0) {
+        // Check Due Date
+        if (due >= currentDay && due <= currentDay + 7) {
+            hasAlerts = true;
             const daysLeft = due - currentDay;
             if (state.notificationsEnabled) {
-                if (daysLeft === 0) showLocalNotification("¡Vence hoy!", `Hoy vence tu tarjeta ${card.bank}. Total: $${amount.toLocaleString('es-AR')}`);
-                else if (daysLeft === 1) showLocalNotification("Vence mañana", `Mañana vence tu tarjeta ${card.bank}. Prepárate para pagar $${amount.toLocaleString('es-AR')}`);
+                if (daysLeft === 0) showLocalNotification("¡Vence hoy!", `Hoy vence tu tarjeta ${card.bank}.`);
+                else if (daysLeft === 1) showLocalNotification("Vence mañana", `Mañana vence tu tarjeta ${card.bank}.`);
             }
             html += `
                 <div class="glass" style="margin-bottom: 12px; padding: 12px 15px; border-left: 4px solid var(--danger); display: flex; align-items: center; gap: 12px;">
                     <i class="fa-solid fa-circle-exclamation" style="color: var(--danger); font-size: 1.2rem;"></i>
                     <div style="flex: 1;">
                         <p style="margin: 0; font-size: 0.85rem; font-weight: 600;">${daysLeft === 0 ? '¡Vence hoy!' : `Vence en ${daysLeft} días`}: ${sanitize(card.bank)}</p>
-                        <p style="margin: 0; font-size: 0.75rem; opacity: 0.7;">Total a pagar: $${amount.toLocaleString('es-AR')}</p>
+                        <p style="margin: 0; font-size: 0.75rem; opacity: 0.7;">Total: $${amount.toLocaleString('es-AR')}</p>
                     </div>
                 </div>
             `;
@@ -575,6 +577,7 @@ function renderNotifications() {
     });
 
     area.innerHTML = html;
+    if (navDot) navDot.style.display = hasAlerts ? 'block' : 'none';
 }
 
 function renderCarouselDayPicker(containerId, inputId, selectedDay) {
@@ -1096,13 +1099,12 @@ document.getElementById('form-billing').onsubmit = (e) => {
 document.getElementById('form-purchase').onsubmit = (e) => {
     e.preventDefault();
     const id = document.getElementById('purchase-edit-id').value;
-    const isRec = document.getElementById('purchase-recurring').checked;
     const data = {
         cardId: state.selectedCardId,
         name: document.getElementById('purchase-name').value,
         amount: parseFloat(document.getElementById('purchase-amount').value),
-        isRecurring: isRec,
-        installments: isRec ? 0 : parseInt(document.getElementById('purchase-installments').value),
+        isRecurring: false,
+        installments: parseInt(document.getElementById('purchase-installments').value) || 1,
         startMonth: document.getElementById('purchase-start-month').value
     };
     if (id) {
