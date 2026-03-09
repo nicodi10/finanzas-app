@@ -202,13 +202,18 @@
                     </div>
                 </div>
 
+                <button id="btn-theme-toggle" class="btn-settings-outline" onclick="toggleTheme()"
+                    style="border-color: var(--text-secondary); color: var(--text-main);">
+                    <i class="fa-solid fa-moon"></i> Modo Oscuro: <span id="theme-status">Desactivado</span>
+                </button>
+
                 <button id="btn-notifications" class="btn-settings-outline">
                     <i class="fa-solid fa-bell"></i> Activar Notificaciones
                 </button>
                 <button class="btn-settings-solid" onclick="wipeData()">
                     <i class="fa-solid fa-trash-can"></i> Borrar todos mis datos
                 </button>
-                <button class="btn-settings-outline" onclick="logout()">
+                <button class="btn-logout-minimal" onclick="logout()">
                     <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
                 </button>
             </div>

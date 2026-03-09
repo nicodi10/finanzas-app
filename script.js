@@ -8,10 +8,100 @@ let state = {
     cards: [],    // {id, bank, type, last4, color, billingCycles: { 'YYYY-MM': {closingDay, dueDay} }}
     purchases: [], // {id, cardId, name, amount, isRecurring, installments, startMonth}
     selectedCardId: null,
-    notificationsEnabled: true
+    notificationsEnabled: true,
+    alertsSeen: false,
+    theme: localStorage.getItem('ff_theme') || 'light'
 };
 
+function applyTheme() {
+    document.documentElement.setAttribute('data-theme', state.theme);
+    const themeStatus = document.getElementById('theme-status');
+    const themeIcon = document.querySelector('#btn-theme-toggle i');
+    if (themeStatus) themeStatus.innerText = state.theme === 'dark' ? 'Activado' : 'Desactivado';
+    if (themeIcon) {
+        themeIcon.className = state.theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    }
+}
+
+function toggleTheme() {
+    state.theme = state.theme === 'light' ? 'dark' : 'light';
+    localStorage.setItem('ff_theme', state.theme);
+    applyTheme();
+}
+
+let notifiedToday = new Set(); // Cache para evitar bucles de notificaciones en la sesión
+
 const COLOR_PALETTE = ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#4ade80', '#94a3b8', '#1e293b'];
+
+const CATEGORY_ICONS = {
+    'supermercado': 'fa-basket-shopping',
+    'comida': 'fa-utensils',
+    'restaurante': 'fa-utensils',
+    'delivery': 'fa-motorcycle',
+    'combustible': 'fa-gas-pump',
+    'nafta': 'fa-gas-pump',
+    'servicio': 'fa-bolt',
+    'luz': 'fa-bolt',
+    'agua': 'fa-droplet',
+    'internet': 'fa-wifi',
+    'alquiler': 'fa-house-user',
+    'salud': 'fa-heart-pulse',
+    'farmacia': 'fa-pills',
+    'ropa': 'fa-shirt',
+    'shopping': 'fa-bag-shopping',
+    'ocio': 'fa-clapperboard',
+    'cine': 'fa-clapperboard',
+    'gym': 'fa-dumbbell',
+    'deporte': 'fa-volleyball',
+    'transporte': 'fa-bus',
+    'viaje': 'fa-plane',
+    'educación': 'fa-graduation-cap',
+    'regalo': 'fa-gift',
+    'banco': 'fa-building-columns',
+    'tarjeta': 'fa-credit-card'
+};
+
+function getCategoryIcon(name) {
+    const n = name.toLowerCase();
+    for (const [key, icon] of Object.entries(CATEGORY_ICONS)) {
+        if (n.includes(key)) return icon;
+    }
+    return 'fa-cart-shopping'; // icono por defecto
+}
+
+// Swipe for delete logic
+let itemTouchStartX = 0;
+let itemSwipedElement = null;
+
+function handleItemTouchStart(e) {
+    itemTouchStartX = e.touches[0].clientX;
+    itemSwipedElement = e.currentTarget;
+}
+
+function handleItemTouchMove(e) {
+    if (!itemTouchStartX || !itemSwipedElement) return;
+    const touchX = e.touches[0].clientX;
+    const diff = itemTouchStartX - touchX;
+
+    // Solo permitimos deslizar hacia la izquierda
+    if (diff > 0 && diff < 100) {
+        itemSwipedElement.style.transform = `translateX(-${diff}px)`;
+    }
+}
+
+function handleItemTouchEnd(e, id, type) {
+    if (!itemTouchStartX || !itemSwipedElement) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = itemTouchStartX - touchEndX;
+
+    if (diff > 70) {
+        // Si desliza suficiente, mantenemos el botón visible o borramos
+        itemSwipedElement.style.transform = `translateX(-80px)`;
+    } else {
+        itemSwipedElement.style.transform = `translateX(0)`;
+    }
+    itemTouchStartX = 0;
+}
 
 // --- Firebase Configuration ---
 // REEMPLAZA ESTO CON TUS DATOS DE LA CONSOLA DE FIREBASE
@@ -80,6 +170,7 @@ function sanitize(str) {
 }
 
 function init() {
+    applyTheme();
     const userSession = JSON.parse(localStorage.getItem('ff_user_session') || '{}');
     if (userSession.id) {
         document.getElementById('view-login').style.display = 'none';
@@ -231,6 +322,7 @@ function updateSyncUI(status) {
 
     icon.className = 'fa-solid';
     if (status === 'syncing') {
+        showSkeletons();
         icon.classList.add('fa-cloud-arrow-up', 'fa-bounce');
         icon.style.color = 'var(--primary)';
         text.innerText = 'Sincronizando...';
@@ -279,6 +371,8 @@ function importData(event) {
 }
 
 // --- Navigation ---
+let shownAlerts = new Set(); // Para evitar bucles de notificaciones
+
 function showView(viewId) {
     if (viewId === 'dashboard') {
         state.currentDate = new Date();
@@ -308,7 +402,6 @@ function showView(viewId) {
             picEl.innerHTML = `<i class="fa-solid fa-user"></i>`;
         }
 
-        // Settings Notification Button UI
         if (btnNotif) {
             btnNotif.className = 'btn-settings-outline'; // Base class
             btnNotif.style.opacity = '1';
@@ -329,6 +422,12 @@ function showView(viewId) {
                 btnNotif.onclick = requestNotificationPermission;
             }
         }
+    }
+
+    if (viewId === 'cards') {
+        state.alertsSeen = true;
+        const navDot = document.getElementById('nav-card-dot');
+        if (navDot) navDot.style.display = 'none';
     }
 
     renderDashboard();
@@ -366,7 +465,6 @@ function showModal(modalId, isEdit = false) {
         } else if (modalId === 'modal-purchase') {
             document.getElementById('modal-purchase-title').innerText = 'Nueva Cuota';
             document.getElementById('purchase-edit-id').value = '';
-            toggleInstallments(false);
             initPicker('picker-purchase-start-month', ym);
         }
     }
@@ -577,7 +675,15 @@ function renderNotifications() {
     });
 
     area.innerHTML = html;
-    if (navDot) navDot.style.display = hasAlerts ? 'block' : 'none';
+
+    // Solo mostrar el punto si hay alertas y NO estamos en la vista de tarjetas y NO han sido "vistas"
+    if (navDot) {
+        if (hasAlerts && state.currentView !== 'cards' && !state.alertsSeen) {
+            navDot.style.display = 'block';
+        } else {
+            navDot.style.display = 'none';
+        }
+    }
 }
 
 function renderCarouselDayPicker(containerId, inputId, selectedDay) {
@@ -694,6 +800,26 @@ function getCardLogo(type) {
     return logos[type] || '<i class="fa-solid fa-credit-card"></i>';
 }
 
+function showSkeletons() {
+    const list = document.getElementById('fixed-expenses-list');
+    if (!list) return;
+
+    let html = '';
+    for (let i = 0; i < 3; i++) {
+        html += `
+            <div class="expense-item glass" style="opacity: 0.6; border: none;">
+                <div class="icon-box skeleton" style="width: 40px; height: 40px; border-radius: 12px;"></div>
+                <div class="expense-info">
+                    <div class="skeleton" style="width: 120px; height: 16px; margin-bottom: 8px;"></div>
+                    <div class="skeleton" style="width: 80px; height: 12px;"></div>
+                </div>
+                <div class="skeleton" style="width: 60px; height: 20px;"></div>
+            </div>
+        `;
+    }
+    list.innerHTML = html;
+}
+
 // --- Rendering ---
 function renderDashboard() {
     const { fixedTotal, cardTotal, cardSummary, filteredExpenses } = getMonthlyStats();
@@ -746,18 +872,27 @@ function renderDashboard() {
                 installmentText = ` <span style="font-size: 0.75rem; background: rgba(56, 189, 248, 0.15); color: var(--primary); padding: 2px 8px; border-radius: 8px; margin-left: 6px; font-weight: 700;">${String(cur).padStart(2, '0')}/${String(total).padStart(2, '0')}</span>`;
             }
 
+            const iconClass = getCategoryIcon(e.name);
+
             return `
-                <div class="expense-item glass">
-                    <div class="icon-box" style="background: ${e.type === 'fixed' ? 'rgba(56, 189, 248, 0.1)' : 'rgba(129, 140, 248, 0.1)'}; color: ${e.type === 'fixed' ? 'var(--primary)' : 'var(--secondary)'};">
-                        <i class="fa-solid ${e.type === 'fixed' ? 'fa-house-lock' : 'fa-calendar-day'}"></i>
+                <div class="swipe-item-container">
+                    <div class="swipe-delete-action" onclick="deleteExpense('${e.id}')">
+                        <i class="fa-solid fa-trash"></i>
                     </div>
-                    <div class="expense-info">
-                        <div class="expense-name">${sanitize(e.name)}${installmentText}</div>
-                        <div class="expense-category">${e.type === 'fixed' ? 'Gasto Fijo' : 'Gasto del Mes'} ${e.endMonth === (state.currentDate.getFullYear() + '-' + String(state.currentDate.getMonth() + 1).padStart(2, '0')) ? '⚠️ Finaliza' : ''}</div>
+                    <div class="expense-item swipe-item-content" 
+                         ontouchstart="handleItemTouchStart(event)" 
+                         ontouchmove="handleItemTouchMove(event)" 
+                         ontouchend="handleItemTouchEnd(event, '${e.id}', 'expense')">
+                        <div class="icon-box" style="background: ${e.type === 'fixed' ? 'rgba(56, 189, 248, 0.1)' : 'rgba(129, 140, 248, 0.1)'}; color: ${e.type === 'fixed' ? 'var(--primary)' : 'var(--secondary)'};">
+                            <i class="fa-solid ${iconClass}"></i>
+                        </div>
+                        <div class="expense-info">
+                            <div class="expense-name">${sanitize(e.name)}${installmentText}</div>
+                            <div class="expense-category">${e.type === 'fixed' ? 'Gasto Fijo' : 'Gasto del Mes'} ${e.endMonth === (state.currentDate.getFullYear() + '-' + String(state.currentDate.getMonth() + 1).padStart(2, '0')) ? '⚠️ Finaliza' : ''}</div>
+                        </div>
+                        <div class="expense-amount">$${parseFloat(e.amount).toLocaleString('es-AR')}</div>
+                        <button class="btn-action" onclick="editExpense('${e.id}')"><i class="fa-solid fa-pen"></i></button>
                     </div>
-                    <div class="expense-amount">$${parseFloat(e.amount).toLocaleString('es-AR')}</div>
-                    <button class="btn-action" onclick="editExpense('${e.id}')"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn-action delete" onclick="deleteExpense('${e.id}')"><i class="fa-solid fa-trash"></i></button>
                 </div>
             `;
         }).join('');
@@ -950,15 +1085,27 @@ function renderPurchases() {
             else status = `Cuota ${cur}/${p.installments}`;
         }
 
+        const iconClass = getCategoryIcon(p.name);
+
         return `
-            <div class="expense-item glass">
-                <div class="expense-info">
-                    <div class="expense-name">${sanitize(p.name)}</div>
-                    <div class="expense-category">${status}</div>
+            <div class="swipe-item-container">
+                <div class="swipe-delete-action" onclick="deletePurchase('${p.id}')">
+                    <i class="fa-solid fa-trash"></i>
                 </div>
-                <div class="expense-amount">$${amt.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</div>
-                <button class="btn-action" onclick="editPurchase('${p.id}')"><i class="fa-solid fa-pen"></i></button>
-                <button class="btn-action delete" onclick="deletePurchase('${p.id}')"><i class="fa-solid fa-trash"></i></button>
+                <div class="expense-item swipe-item-content"
+                     ontouchstart="handleItemTouchStart(event)" 
+                     ontouchmove="handleItemTouchMove(event)" 
+                     ontouchend="handleItemTouchEnd(event, '${p.id}', 'purchase')">
+                    <div class="icon-box" style="background: rgba(129, 140, 248, 0.1); color: var(--secondary);">
+                        <i class="fa-solid ${iconClass}"></i>
+                    </div>
+                    <div class="expense-info">
+                        <div class="expense-name">${sanitize(p.name)}</div>
+                        <div class="expense-category">${status}</div>
+                    </div>
+                    <div class="expense-amount">$${amt.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</div>
+                    <button class="btn-action" onclick="editPurchase('${p.id}')"><i class="fa-solid fa-pen"></i></button>
+                </div>
             </div>
         `;
     }).join('');
@@ -1144,15 +1291,23 @@ function toggleNotifications() {
 }
 
 function showLocalNotification(title, body) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const notifKey = `${todayStr}_${title}_${body}`;
+
+    // Si ya notificamos esto hoy en esta sesión, no repetir
+    if (notifiedToday.has(notifKey)) return;
+
     if (Notification.permission === 'granted' && state.notificationsEnabled) {
         const options = {
             body: body,
             icon: "./icon.png",
             vibrate: [200, 100, 200],
-            badge: "./icon.png"
+            badge: "./icon.png",
+            tag: notifKey // Unifica avisos iguales
         };
 
-        // El Service Worker puede lanzar la notificación incluso en segundo plano
+        notifiedToday.add(notifKey);
+
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.ready.then(registration => {
                 registration.showNotification(title, options);
