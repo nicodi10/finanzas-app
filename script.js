@@ -7,7 +7,8 @@ let state = {
     expenses: [], // {id, type: 'fixed'|'variable', name, amount, month: 'YYYY-MM', endMonth: 'YYYY-MM'|null}
     cards: [],    // {id, bank, type, last4, color, billingCycles: { 'YYYY-MM': {closingDay, dueDay} }}
     purchases: [], // {id, cardId, name, amount, isRecurring, installments, startMonth}
-    selectedCardId: null
+    selectedCardId: null,
+    notificationsEnabled: true
 };
 
 const COLOR_PALETTE = ['#38bdf8', '#818cf8', '#f472b6', '#fbbf24', '#4ade80', '#94a3b8', '#1e293b'];
@@ -128,6 +129,7 @@ function loadData() {
         state.expenses = parsed.expenses || [];
         state.cards = parsed.cards || [];
         state.purchases = parsed.purchases || [];
+        state.notificationsEnabled = parsed.notificationsEnabled !== undefined ? parsed.notificationsEnabled : true;
         state.currentDate = new Date();
     }
     renderColorPicker();
@@ -145,6 +147,7 @@ function startCloudSync(uid) {
             state.expenses = cloudData.expenses || [];
             state.cards = cloudData.cards || [];
             state.purchases = cloudData.purchases || [];
+            state.notificationsEnabled = cloudData.notificationsEnabled !== undefined ? cloudData.notificationsEnabled : true;
 
             saveDataLocalOnly();
             renderDashboard();
@@ -190,7 +193,8 @@ function saveDataLocalOnly() {
     const data = {
         expenses: state.expenses,
         cards: state.cards,
-        purchases: state.purchases
+        purchases: state.purchases,
+        notificationsEnabled: state.notificationsEnabled
     };
     localStorage.setItem('finanzas_data_v3', JSON.stringify(data));
 }
@@ -205,6 +209,7 @@ function syncDataToCloud() {
         expenses: state.expenses,
         cards: state.cards,
         purchases: state.purchases,
+        notificationsEnabled: state.notificationsEnabled,
         lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
     };
 
@@ -292,6 +297,7 @@ function showView(viewId) {
         const nameEl = document.getElementById('settings-user-name');
         const emailEl = document.getElementById('settings-user-email');
         const picEl = document.getElementById('user-profile-pic-settings');
+        const btnNotif = document.getElementById('btn-notifications');
 
         if (nameEl) nameEl.innerText = userSession.name || 'Invitado';
         if (emailEl) emailEl.innerText = userSession.email || 'Local';
@@ -300,6 +306,25 @@ function showView(viewId) {
             picEl.innerHTML = `<img src="${userSession.photo}" style="width: 100%; height: 100%; object-fit: cover;">`;
         } else if (picEl) {
             picEl.innerHTML = `<i class="fa-solid fa-user"></i>`;
+        }
+
+        // Dashboard Notification Button UI
+        if (btnNotif) {
+            if (Notification.permission === 'denied') {
+                btnNotif.innerHTML = `<i class="fa-solid fa-bell-slash"></i> Permisos Bloqueados`;
+                btnNotif.style.opacity = '0.5';
+                btnNotif.onclick = () => alert("Debes habilitar los permisos desde la configuración del navegador.");
+            } else if (state.notificationsEnabled) {
+                btnNotif.innerHTML = `<i class="fa-solid fa-bell-slash"></i> Desactivar Notificaciones`;
+                btnNotif.style.color = 'var(--danger)';
+                btnNotif.style.borderColor = 'var(--danger)';
+                btnNotif.onclick = toggleNotifications;
+            } else {
+                btnNotif.innerHTML = `<i class="fa-solid fa-bell"></i> Activar Notificaciones`;
+                btnNotif.style.color = 'var(--primary)';
+                btnNotif.style.borderColor = 'var(--primary)';
+                btnNotif.onclick = requestNotificationPermission;
+            }
         }
     }
 
@@ -486,7 +511,10 @@ function renderNotifications(cardSummary) {
         // Check Closing (next 7 days)
         if (closing >= currentDay && closing <= currentDay + 7 && amount > 0) {
             const daysLeft = closing - currentDay;
-            if (daysLeft === 0) showLocalNotification("¡Cierre de Tarjeta!", `Tu tarjeta ${card.bank} cierra HOY. Saldo: $${amount.toLocaleString('es-AR')}`);
+            if (state.notificationsEnabled) {
+                if (daysLeft === 0) showLocalNotification("¡Hoy cierra!", `Tu tarjeta ${card.bank} cierra HOY. Saldo: $${amount.toLocaleString('es-AR')}`);
+                else if (daysLeft === 1) showLocalNotification("Cierra mañana", `Tu tarjeta ${card.bank} cierra MAÑANA. Saldo: $${amount.toLocaleString('es-AR')}`);
+            }
             html += `
                 <div class="glass" style="margin-bottom: 12px; padding: 12px 15px; border-left: 4px solid var(--primary); display: flex; align-items: center; gap: 12px;">
                     <i class="fa-solid fa-calendar-check" style="color: var(--primary); font-size: 1.2rem;"></i>
@@ -501,7 +529,10 @@ function renderNotifications(cardSummary) {
         // Check Due Date (next 7 days)
         if (due >= currentDay && due <= currentDay + 7 && amount > 0) {
             const daysLeft = due - currentDay;
-            if (daysLeft === 0) showLocalNotification("¡Vencimiento de Tarjeta!", `Hoy vence tu tarjeta ${card.bank}. Total: $${amount.toLocaleString('es-AR')}`);
+            if (state.notificationsEnabled) {
+                if (daysLeft === 0) showLocalNotification("¡Vence hoy!", `Hoy vence tu tarjeta ${card.bank}. Total: $${amount.toLocaleString('es-AR')}`);
+                else if (daysLeft === 1) showLocalNotification("Vence mañana", `Mañana vence tu tarjeta ${card.bank}. Prepárate para pagar $${amount.toLocaleString('es-AR')}`);
+            }
             html += `
                 <div class="glass" style="margin-bottom: 12px; padding: 12px 15px; border-left: 4px solid var(--danger); display: flex; align-items: center; gap: 12px;">
                     <i class="fa-solid fa-circle-exclamation" style="color: var(--danger); font-size: 1.2rem;"></i>
@@ -1062,8 +1093,9 @@ function requestNotificationPermission() {
 
     Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
-            const btn = document.getElementById('btn-notifications');
-            if (btn) btn.style.display = 'none';
+            state.notificationsEnabled = true;
+            saveData();
+            showView('settings'); // Refrescar botón
             new Notification("¡Genial!", {
                 body: "Ahora recibirás alertas de tus tarjetas.",
                 icon: "./icon.png"
@@ -1072,8 +1104,16 @@ function requestNotificationPermission() {
     });
 }
 
+function toggleNotifications() {
+    state.notificationsEnabled = !state.notificationsEnabled;
+    saveData();
+    showView('settings'); // Refrescar botón
+    const msg = state.notificationsEnabled ? "Notificaciones activadas" : "Notificaciones desactivadas";
+    alert(msg);
+}
+
 function showLocalNotification(title, body) {
-    if (Notification.permission === 'granted') {
+    if (Notification.permission === 'granted' && state.notificationsEnabled) {
         const options = {
             body: body,
             icon: "./icon.png",
