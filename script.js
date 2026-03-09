@@ -211,6 +211,7 @@ function syncDataToCloud() {
     db.collection('usuarios').doc(userSession.id).set(dataToSave, { merge: true })
         .then(() => {
             updateSyncUI('synced');
+            if (navigator.vibrate) navigator.vibrate(10); // Feedback háptico muy sutil
         })
         .catch((e) => {
             console.error("Error al subir a la nube:", e);
@@ -275,7 +276,7 @@ function importData(event) {
 // --- Navigation ---
 function showView(viewId) {
     if (viewId === 'dashboard') {
-        state.currentDate = new Date(); // Reinicia al mes actual verdadero
+        state.currentDate = new Date();
     }
 
     document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
@@ -290,8 +291,16 @@ function showView(viewId) {
         const userSession = JSON.parse(localStorage.getItem('ff_user_session') || '{}');
         const nameEl = document.getElementById('settings-user-name');
         const emailEl = document.getElementById('settings-user-email');
+        const picEl = document.getElementById('user-profile-pic-settings');
+
         if (nameEl) nameEl.innerText = userSession.name || 'Invitado';
         if (emailEl) emailEl.innerText = userSession.email || 'Local';
+
+        if (picEl && userSession.photo) {
+            picEl.innerHTML = `<img src="${userSession.photo}" style="width: 100%; height: 100%; object-fit: cover;">`;
+        } else if (picEl) {
+            picEl.innerHTML = `<i class="fa-solid fa-user"></i>`;
+        }
     }
 
     renderDashboard();
@@ -456,6 +465,58 @@ function selectPickerMonth(pickerId, month) {
     renderPicker(pickerId);
 }
 
+function renderNotifications(cardSummary) {
+    const area = document.getElementById('notifications-area');
+    if (!area) return;
+
+    const today = new Date();
+    const currentDay = today.getDate();
+    const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+    let html = '';
+
+    state.cards.forEach(card => {
+        const cycle = card.billingCycles[ym];
+        if (!cycle) return;
+
+        const closing = parseInt(cycle.closingDay);
+        const due = parseInt(cycle.dueDay);
+        const amount = cardSummary[card.id] || 0;
+
+        // Check Closing (next 7 days)
+        if (closing >= currentDay && closing <= currentDay + 7 && amount > 0) {
+            const daysLeft = closing - currentDay;
+            if (daysLeft === 0) showLocalNotification("¡Cierre de Tarjeta!", `Tu tarjeta ${card.bank} cierra HOY. Saldo: $${amount.toLocaleString('es-AR')}`);
+            html += `
+                <div class="glass" style="margin-bottom: 12px; padding: 12px 15px; border-left: 4px solid var(--primary); display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-calendar-check" style="color: var(--primary); font-size: 1.2rem;"></i>
+                    <div style="flex: 1;">
+                        <p style="margin: 0; font-size: 0.85rem; font-weight: 600;">${daysLeft === 0 ? '¡Hoy cierra!' : `Cierra en ${daysLeft} días`}: ${sanitize(card.bank)}</p>
+                        <p style="margin: 0; font-size: 0.75rem; opacity: 0.7;">Saldo acumulado: $${amount.toLocaleString('es-AR')}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Check Due Date (next 7 days)
+        if (due >= currentDay && due <= currentDay + 7 && amount > 0) {
+            const daysLeft = due - currentDay;
+            if (daysLeft === 0) showLocalNotification("¡Vencimiento de Tarjeta!", `Hoy vence tu tarjeta ${card.bank}. Total: $${amount.toLocaleString('es-AR')}`);
+            html += `
+                <div class="glass" style="margin-bottom: 12px; padding: 12px 15px; border-left: 4px solid var(--danger); display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-circle-exclamation" style="color: var(--danger); font-size: 1.2rem;"></i>
+                    <div style="flex: 1;">
+                        <p style="margin: 0; font-size: 0.85rem; font-weight: 600;">${daysLeft === 0 ? '¡Vence hoy!' : `Vence en ${daysLeft} días`}: ${sanitize(card.bank)}</p>
+                        <p style="margin: 0; font-size: 0.75rem; opacity: 0.7;">Total a pagar: $${amount.toLocaleString('es-AR')}</p>
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    area.innerHTML = html;
+}
+
 function renderCarouselDayPicker(containerId, inputId, selectedDay) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -576,9 +637,18 @@ function renderDashboard() {
 
     const userSession = JSON.parse(localStorage.getItem('ff_user_session') || '{}');
     const greetingTitle = document.getElementById('dashboard-greeting-title');
+    const dashboardPic = document.getElementById('user-profile-pic-dashboard');
+
     if (greetingTitle && userSession.name) {
         const firstName = userSession.name.split(' ')[0];
         greetingTitle.innerText = `Hola, ${sanitize(firstName)}! 👋`;
+    }
+
+    if (dashboardPic && userSession.photo) {
+        dashboardPic.style.display = 'block';
+        dashboardPic.innerHTML = `<img src="${userSession.photo}" style="width: 100%; height: 100%; object-fit: cover;">`;
+    } else if (dashboardPic) {
+        dashboardPic.style.display = 'none';
     }
 
     const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -595,6 +665,8 @@ function renderDashboard() {
 
     const statsTotalDisplay = document.getElementById('stats-total-display');
     if (statsTotalDisplay) statsTotalDisplay.innerText = `$${(fixedTotal + cardTotal).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+
+    renderNotifications(cardSummary);
 
     const list = document.getElementById('fixed-expenses-list');
     if (list) {
@@ -981,5 +1053,52 @@ document.getElementById('form-purchase').onsubmit = (e) => {
     }
     saveData(); closeModal(); renderPurchases(); renderDashboard();
 };
+
+function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        alert("Tu navegador no soporta notificaciones.");
+        return;
+    }
+
+    Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+            const btn = document.getElementById('btn-notifications');
+            if (btn) btn.style.display = 'none';
+            new Notification("¡Genial!", {
+                body: "Ahora recibirás alertas de tus tarjetas.",
+                icon: "./icon.png"
+            });
+        }
+    });
+}
+
+function showLocalNotification(title, body) {
+    if (Notification.permission === 'granted') {
+        const options = {
+            body: body,
+            icon: "./icon.png",
+            vibrate: [200, 100, 200],
+            badge: "./icon.png"
+        };
+
+        // El Service Worker puede lanzar la notificación incluso en segundo plano
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification(title, options);
+            });
+        } else {
+            new Notification(title, options);
+        }
+    }
+}
+
+function forceSync() {
+    const userSession = JSON.parse(localStorage.getItem('ff_user_session') || '{}');
+    if (userSession.id && userSession.id !== 'local') {
+        syncDataToCloud();
+    } else {
+        alert("Inicia sesión con Google para sincronizar.");
+    }
+}
 
 init();
