@@ -949,7 +949,7 @@ function renderDashboard() {
                     <div class="expense-item glass" onclick="viewCardDetails('${c.id}')" style="margin-bottom: 0;">
                         <div class="icon-box" style="background: ${c.color}22; color: ${c.color}; font-size: 1.8rem;">${getCardLogo(c.type)}</div>
                         <div class="expense-info">
-                            <div class="expense-name">${sanitize(c.bank)} <span style="font-size: 0.8rem; opacity: 0.7; font-weight: 400;"> (**** ${sanitize(c.last4)})</span></div>
+                            <div class="expense-name">${sanitize(c.bank)} <span style="font-size: 0.8rem; opacity: 0.7; font-weight: 400; margin-left: 8px;"> (**** ${sanitize(c.last4)})</span></div>
                             <div class="expense-category">Vto: ${cycle.dueDay} | Total: $${amount.toLocaleString('es-AR')}</div>
                         </div>
                         <i class="fa-solid fa-chevron-right" style="opacity: 0.3;"></i>
