@@ -190,6 +190,13 @@ const firebaseConfig = {
 // Inicializar Firebase (Compat Mode)
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
+
+    // Inicializar App Check con reCAPTCHA (v3 o Enterprise)
+    const appCheck = firebase.appCheck();
+    appCheck.activate(
+        '6LczyIUsAAAAAO7_MyrOvvKzLF_V2GDxqnjN9eC1', // <--- Pega aquí tu Site Key de reCAPTCHA
+        true // isTokenAutoRefreshEnabled
+    );
 }
 const auth = firebase.auth();
 const db = firebase.firestore();
